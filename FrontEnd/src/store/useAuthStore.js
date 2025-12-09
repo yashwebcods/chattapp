@@ -31,11 +31,27 @@ export const useAuthStore = create((set, get) => ({
         try {
             const res = await axiosInstance.post("/auth/signup", data)
             toast.success("Account Created")
-            set({ authUser: res.data })
-            get().connectSocket()
 
+            // Only auto-login if no user is currently logged in
+            if (!get().authUser) {
+                set({ authUser: res.data })
+                get().connectSocket()
+            }
         } catch (err) {
             toast.error(err.response.data.message)
+        } finally {
+            set({ isSigningUp: false })
+        }
+    },
+
+    addSeller: async (data) => {
+        set({ isSigningUp: true });
+        try {
+            const res = await axiosInstance.post("/seller/addseller", data)
+            toast.success("Seller Added Successfully")
+            return res.data;
+        } catch (err) {
+            toast.error(err.response?.data?.message || "Failed to add seller")
         } finally {
             set({ isSigningUp: false })
         }
@@ -80,6 +96,14 @@ export const useAuthStore = create((set, get) => ({
             toast.error(error.response.data.message)
         } finally {
             set({ updateProfile: false })
+        }
+    },
+
+    saveFcmToken: async (token) => {
+        try {
+            await axiosInstance.put('/auth/update-fcm-token', { fcmToken: token });
+        } catch (error) {
+            console.error('Error saving FCM token:', error);
         }
     },
 

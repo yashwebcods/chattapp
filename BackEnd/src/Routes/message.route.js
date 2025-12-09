@@ -1,10 +1,13 @@
 import express from 'express'
 import { proctedRoute } from '../Config/auth.middlawear.js'
-import { getMessage, getUser , sendMessage } from '../Controllers/message.Ctl.js'
+import { getMessage, getUser, sendMessage, deleteMessages, clearChat, clearGroupChat } from '../Controllers/message.Ctl.js'
 const route = express.Router()
 
-route.get('/users' , proctedRoute , getUser)
-route.get('/:id',proctedRoute,getMessage)
-route.post('/send/:id' , proctedRoute , sendMessage)
+route.get('/users', proctedRoute, getUser)
+route.get('/:id', proctedRoute, getMessage)
+route.post('/send/:id', proctedRoute, sendMessage)
+route.post('/delete', proctedRoute, deleteMessages)
+route.delete('/clear/:id', proctedRoute, clearChat)
+route.delete('/group/:groupId', proctedRoute, clearGroupChat)
 
-export default route ;
+export default route;

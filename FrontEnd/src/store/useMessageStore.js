@@ -2,22 +2,28 @@ import { create } from "zustand";
 import { axiosInstance } from '../lib/axios'
 import toast from "react-hot-toast";
 import { useAuthStore } from './useAuthStore'
+import { persist } from "zustand/middleware";
 
-export const useMessageStore = create((set,get) => ({
+
+export const useMessageStore = create(persist((set, get) => ({
 
     message: [],
     users: [],
+    groups: [],
     selectedUser: null,
+    selectedGroup: null,
     isUsersLoading: false,
     isMessageLoding: false,
-    
+    isOn: false,
+    unreadCounts: {}, // { userId: count, groupId: count }
+    sellerIndex: null,
+    setGroup: (value) => set({ isOn: value }),
 
     getUsers: async () => {
         set({ isUsersLoading: true })
         try {
-            const res = await axiosInstance.get('/message/users')            
+            const res = await axiosInstance.get('/message/users')
             set({ users: res.data })
-            // console.log(res);
         } catch (err) {
             toast.error(err.response.err.message)
         } finally {
@@ -39,29 +45,259 @@ export const useMessageStore = create((set,get) => ({
     },
 
     sendMessages: async (messageData) => {
-        const { message,selectedUser } = get()
+        const { selectedUser, selectedGroup } = get();
         try {
-            const res = await axiosInstance.post(`/message/send/${selectedUser._id}`,messageData)   
-            set({message:[...message,res.data]})
-        } catch (error) {   
-            toast.error(error.response.data.message)
+            const endpoint = selectedGroup
+                ? `/message/send/undefined`
+                : selectedUser
+                    ? `/message/send/${selectedUser._id}`
+                    : `/message/send/undefined`;
+
+            const data = selectedGroup
+                ? { ...messageData, groupId: selectedGroup._id }
+                : messageData;
+
+            const res = await axiosInstance.post(endpoint, data);
+
+            // DON'T append to state here - wait for socket
+            return res.data;
+        } catch (error) {
+            toast.error(error.response?.data?.message || "Failed to send message");
+            return null; // Return null on error so input can still clear
         }
     },
 
     subcribeToMessages: () => {
-        const {selectedUser} = get()
-        if(!selectedUser) return;
         const socket = useAuthStore.getState().socket;
+        console.log("subcribeToMessages called. Socket:", socket ? "Connected" : "Null");
+        if (!socket) return;
+
         socket.on("newMessage", (newMessage) => {
-            if(newMessage.senderId !== selectedUser._id) return 
-            set({ message:[...get().message,newMessage] })
-        }) 
+            console.log("newMessage event received:", newMessage);
+            const { selectedUser, message, unreadCounts } = get();
+            const authUser = useAuthStore.getState().authUser;
+
+            // Check if this message is relevant to the current chat
+            const isFromSelectedUser = selectedUser && (
+                newMessage.senderId === selectedUser._id ||
+                newMessage.senderId?._id === selectedUser._id ||
+                newMessage.receiverId === selectedUser._id ||
+                newMessage.receiverId?._id === selectedUser._id
+            );
+
+            // If this message is from/to the currently selected user, add it to the chat
+            if (isFromSelectedUser && !message.some(msg => msg._id === newMessage._id)) {
+                set({ message: [...message, newMessage] });
+            } else {
+                // Otherwise, show a notification and increment unread count
+                // Don't show notification for our own messages to other users
+                const isMyMessage = newMessage.senderId === authUser._id || newMessage.senderId?._id === authUser._id;
+
+                if (!isMyMessage) {
+                    const senderName = newMessage.senderId?.fullName || 'Someone';
+                    toast.success(`New message from ${senderName}`, { duration: 2000 });
+
+                    // Increment unread count for this user
+                    const senderId = newMessage.senderId._id || newMessage.senderId;
+                    set({
+                        unreadCounts: {
+                            ...unreadCounts,
+                            [senderId]: (unreadCounts[senderId] || 0) + 1
+                        }
+                    });
+                }
+            }
+        });
     },
 
-    unsubcribeToMessage:() => {
+    unsubcribeToMessage: () => {
         const socket = useAuthStore.getState().socket;
-        socket.off("newMessage")
+        if (socket) {
+            socket.off("newMessage");
+        }
     },
 
-    setSelectedUser : (selectedUser) => set({selectedUser})
-}))
+    subscribeToGroupMessages: () => {
+        const socket = useAuthStore.getState().socket;
+        console.log("subscribeToGroupMessages called. Socket:", socket ? "Connected" : "Null");
+        if (!socket) return;
+
+        socket.on("newGroupMessage", (newMessage) => {
+            console.log("newGroupMessage event received:", newMessage);
+            const { selectedGroup, groups, unreadCounts, message } = get();
+            const authUser = useAuthStore.getState().authUser;
+
+            // If we are currently viewing this group, add message to chat
+            const isCurrentGroup = selectedGroup && (
+                selectedGroup._id === newMessage.groupId ||
+                selectedGroup._id === newMessage.groupId?.toString()
+            );
+
+            if (isCurrentGroup) {
+                set({ message: [...message, newMessage] });
+            }
+
+            // If we sent the message, don't show toast or increment unread count
+            const isMyMessage = newMessage.senderId === authUser._id ||
+                newMessage.senderId?._id === authUser._id;
+
+            if (isMyMessage || isCurrentGroup) return;
+
+            // Get group name - format it like in GroupsListPage
+            let groupName = 'a group';
+            if (newMessage.groupId?.sellerId?.companyName && newMessage.groupId?.sellerIndex !== undefined) {
+                groupName = `${Math.abs(newMessage.groupId.sellerIndex + 1)} - ${newMessage.groupId.sellerId.companyName}`;
+            } else if (newMessage.groupId?.name) {
+                groupName = newMessage.groupId.name;
+            } else {
+                const group = groups.find(g => g._id === newMessage.groupId);
+                if (group?.sellerId?.companyName && group?.sellerIndex !== undefined) {
+                    groupName = `${Math.abs(group.sellerIndex + 1)} - ${group.sellerId.companyName}`;
+                } else if (group?.name) {
+                    groupName = group.name;
+                }
+            }
+
+            // Show notification with group name (2 second duration)
+            toast.success(`New message from ${groupName}`, { duration: 2000 });
+            console.log(`New message from ${groupName}`);
+
+            // Increment unread count for this group
+            set({
+                unreadCounts: {
+                    ...unreadCounts,
+                    [newMessage.groupId]: (unreadCounts[newMessage.groupId] || 0) + 1
+                }
+            });
+        });
+    },
+
+    unsubscribeFromGroupMessages: () => {
+        const socket = useAuthStore.getState().socket;
+        if (socket) {
+            socket.off("newGroupMessage");
+        }
+    },
+
+    createGroup: async (groupData) => {
+        try {
+            const res = await axiosInstance.post('/group/create', groupData);
+            toast.success("Group created successfully");
+            get().getGroups(); // Refresh groups list
+            return res.data;
+        } catch (error) {
+            toast.error(error.response.data.message);
+        }
+    },
+
+    getGroups: async () => {
+        try {
+            const res = await axiosInstance.get('/group');
+            set({ groups: res.data });
+
+            // Only set sellerIndex if groups exist
+            if (res.data && res.data.length > 0 && res.data[0].sellerIndex !== undefined) {
+                const index = Number(res.data[0].sellerIndex) + 1;
+                set({ sellerIndex: index });
+            }
+        } catch (error) {
+            console.error('Error fetching groups:', error);
+            toast.error(error?.response?.data?.message || "Failed to fetch groups");
+        }
+    },
+
+    getGroupMessages: async (groupId) => {
+        try {
+            set({ isMessageLoding: true })
+            const res = await axiosInstance.get(`/group/${groupId}`)
+            set({ message: res.data })
+        } catch (error) {
+            toast.error(error?.response?.data?.message || "Failed to fetch group messages")
+        } finally {
+            set({ isMessageLoding: false })
+        }
+    },
+
+    setSelectedGroup: (selectedGroup) => {
+        const { unreadCounts } = get();
+        if (selectedGroup) {
+            // Clear unread count for this group
+            const newCounts = { ...unreadCounts };
+            delete newCounts[selectedGroup._id];
+            set({ selectedGroup, selectedUser: null, unreadCounts: newCounts });
+        } else {
+            set({ selectedGroup, selectedUser: null });
+        }
+    },
+
+    setSelectedUser: (selectedUser) => {
+        const { unreadCounts } = get();
+        if (selectedUser) {
+            // Clear unread count for this user
+            const newCounts = { ...unreadCounts };
+            delete newCounts[selectedUser._id];
+            set({ selectedUser, selectedGroup: null, unreadCounts: newCounts });
+        } else {
+            set({ selectedUser, selectedGroup: null });
+        }
+    },
+
+    // Chat Deletion Actions
+    isSelectionMode: false,
+    selectedMessageIds: [],
+
+    setSelectionMode: (value) => set({ isSelectionMode: value, selectedMessageIds: [] }),
+
+    toggleMessageSelection: (messageId) => {
+        const { selectedMessageIds } = get();
+        if (selectedMessageIds.includes(messageId)) {
+            set({ selectedMessageIds: selectedMessageIds.filter(id => id !== messageId) });
+        } else {
+            set({ selectedMessageIds: [...selectedMessageIds, messageId] });
+        }
+    },
+
+    deleteMessages: async (messageIds) => {
+        try {
+            await axiosInstance.post('/message/delete', { messageIds });
+
+            // Refresh messages to get updated data with deleted status
+            const { selectedUser, getMessage } = get();
+            if (selectedUser) {
+                await getMessage(selectedUser._id);
+            }
+
+            set({
+                isSelectionMode: false,
+                selectedMessageIds: []
+            });
+
+            toast.success("Messages deleted");
+        } catch (error) {
+            toast.error(error.response?.data?.message || "Failed to delete messages");
+        }
+    },
+
+    clearChat: async (userId) => {
+        try {
+            await axiosInstance.delete(`/message/clear/${userId}`);
+            set({ message: [] });
+            toast.success("Chat cleared");
+        } catch (error) {
+            toast.error(error.response?.data?.message || "Failed to clear chat");
+        }
+    },
+
+    clearGroupChat: async (groupId) => {
+        try {
+            await axiosInstance.delete(`/message/group/${groupId}`);
+            set({ message: [] });
+            toast.success("Group chat cleared");
+        } catch (error) {
+            toast.error(error.response?.data?.message || "Failed to clear group chat");
+        }
+    }
+}), {
+    name: "message-store",
+    partialize: (state) => ({ unreadCounts: state.unreadCounts }),
+}));

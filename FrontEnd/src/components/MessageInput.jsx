@@ -11,35 +11,37 @@ export const MessageInput = () => {
 
   const handleSendMessage = async (e) => {
     e.preventDefault()
-    if(!text.trim() && !imagePreview) return
+    if (!text.trim() && !imagePreview) return
     try {
-      await sendMessages({
-        text:text.trim(),
-        image:imagePreview,
+      const res = await sendMessages({
+        text: text.trim(),
+        image: imagePreview,
       })
 
-      setText('')
-      setImagePriview(null)
-      if(fileInput.current) fileInput.current.value = ''
+      if (res) {
+        setText('')
+        setImagePriview(null)
+        if (fileInput.current) fileInput.current.value = ''
+      }
     } catch (error) {
-        console.error('field to send message',error)
+      console.error('field to send message', error)
     }
   }
   const handleImage = (e) => {
     const file = e.target.files[0];
-    if(!file.type.startsWith('image/')){
-      toast.error('pleace select image')  
+    if (!file.type.startsWith('image/')) {
+      toast.error('pleace select image')
       return;
     }
-     const reader = new FileReader()
-     reader.onload = () => {
-        setImagePriview(reader.result)
-     }
-     reader.readAsDataURL(file)
+    const reader = new FileReader()
+    reader.onload = () => {
+      setImagePriview(reader.result)
+    }
+    reader.readAsDataURL(file)
   }
   const removeImage = () => {
-      setImagePriview(null)
-      if(fileInput.current) fileInput.current.value = ''
+    setImagePriview(null)
+    if (fileInput.current) fileInput.current.value = ''
   }
   return (
     <div className='p-w w-full p-3'>
@@ -84,9 +86,9 @@ export const MessageInput = () => {
             <Image size={20} />
           </button>
           <button type='submit'
-                  className='btn btn-circle btn-sm'
-                  disabled={!text.trim() && !imagePreview}
-            >
+            className='btn btn-circle btn-sm'
+            disabled={!text.trim() && !imagePreview}
+          >
             <Send size={20} />
           </button>
         </div>

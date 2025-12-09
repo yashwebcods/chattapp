@@ -7,37 +7,41 @@ import path from 'path'
 
 import authRouter from './Routes/auth.route.js';
 import messsageRoute from './Routes/message.route.js'
-import { app,server } from './lib/socket.js';
+import sellerRoute from './Routes/seller.route.js'
+import groupRoute from './Routes/group.route.js'
+import { app, server } from './lib/socket.js';
 dotenv.config();
 const port = 8001;
-const __dirname = path.resolve() 
+const __dirname = path.resolve()
 
 app.use(cookieParser());
-app.use(express.json({ limit: "10mb" })); 
+app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ limit: "10mb", extended: true }));
 
 app.use(cors({
-  origin:["http://localhost:5173", "http://localhost:5174"], 
-  credentials: true 
+  origin: ["http://localhost:5173", "http://localhost:5174"],
+  credentials: true
 }));
 
 app.use("/api/auth", authRouter);
 app.use("/api/message", messsageRoute);
+app.use("/api/seller", sellerRoute)
+app.use("/api/group", groupRoute)
 
-if(process.env.NODE_ENV === "production"){
-  app.use(express.static(path.join(__dirname,'../FrontEnd/dist/')))
+if (process.env.NODE_ENV === "production") {
+  app.use(express.static(path.join(__dirname, '../FrontEnd/dist/')))
 
-  app.get("*",(req,res) => {
-    res.sendFile(path.join(__dirname,"../FrontEnd","dist","index.html"))
+  app.get("*", (req, res) => {
+    res.sendFile(path.join(__dirname, "../FrontEnd", "dist", "index.html"))
   })
 }
 
 server.listen(port, (err) => {
-    if (err) {
-        console.log(err);
-        return false;
-    }
-    console.log('server is connected',port);
+  if (err) {
+    console.log(err);
+    return false;
+  }
+  console.log('server is connected', port);
 
 })
 export default app;

@@ -1,39 +1,103 @@
-import { Server } from 'socket.io'
-import http from 'http'
-import express from 'express'
+import { Server } from 'socket.io';
+import http from 'http';
+import express from 'express';
 
-const app = express()
-const server = http.createServer(app)
-const io = new Server(server,
-    {
-        cors: {
-            origin: ['http://localhost:5173', "http://localhost:5174"]
-        }
+const app = express();
+const server = http.createServer(app);
+const io = new Server(server, {
+    cors: {
+        origin: ['http://localhost:5173', 'http://localhost:5174'],
+        methods: ['GET', 'POST']
     }
-)
+});
 
-export function getReseverSocketId(userId){
-    return  userSocketMap[userId]
+// Maps for online users and groups
+const userSocketMap = {}; // userId -> socket.id
+const groups = {};        // groupId -> [userIds]
+
+/**
+ * Get socket ID for a given user
+ * @param {string} userId
+ * @returns {string|null}
+ */
+export function getReseverSocketId(userId) {
+    return userSocketMap[userId] || null;
 }
 
-const userSocketMap = {}
-
 io.on("connection", (socket) => {
-    console.log("User connected", socket.id);
-
     const userId = socket.handshake.query.userId;
-    
-    if (userId) {
-        userSocketMap[userId] = socket.id
-    }
-    
-    io.emit("getOnlineUser", Object.keys(userSocketMap))
+    if (!userId) return;
 
-    socket.on("disconnect", () => {
-        console.log("User disconnected:", socket.id);
-        delete userSocketMap[userId]    
-        io.emit("getOnlineUser", Object.keys(userSocketMap))
+    console.log("User connected:", userId, socket.id);
+
+    // Join user into a private room for direct messages
+    socket.join(userId);
+    userSocketMap[userId] = socket.id;
+
+    // Broadcast online users
+    io.emit("getOnlineUser", Object.keys(userSocketMap));
+
+    // -------------------------
+    // Private Message
+    // -------------------------
+    socket.on("privateMessage", ({ toUserId, message }) => {
+        const payload = {
+            ...message,
+            senderId: userId
+        };
+
+        // Emit to receiver and sender
+        io.to(toUserId).emit("newMessage", payload); // receiver
+        io.to(userId).emit("newMessage", payload);   // sender
     });
-})
 
-export { io, app, server }
+    // -------------------------
+    // Join Group
+    // -------------------------
+    socket.on("joinGroup", ({ groupId }) => {
+        if (!groups[groupId]) groups[groupId] = [];
+        if (!groups[groupId].includes(userId)) groups[groupId].push(userId);
+
+        socket.join(groupId);
+        io.to(groupId).emit("groupNotification", `${userId} joined group ${groupId}`);
+    });
+
+    // -------------------------
+    // Group Message
+    // -------------------------
+    socket.on("groupMessage", ({ groupId, message }) => {
+        const payload = {
+            ...message,
+            senderId: userId,
+            groupId
+        };
+
+        // Emit to group (all members, including sender)
+        io.to(groupId).emit("newGroupMessage", payload);
+    });
+
+    // -------------------------
+    // Disconnect
+    // -------------------------
+    socket.on("disconnect", () => {
+        console.log("User disconnected:", userId, socket.id);
+
+        // Only remove from userSocketMap if this was the current socket for the user
+        if (userSocketMap[userId] === socket.id) {
+            delete userSocketMap[userId];
+            // Broadcast updated online users list
+            io.emit("getOnlineUser", Object.keys(userSocketMap));
+        }
+
+        // Remove from all groups and notify members
+        for (const groupId in groups) {
+            if (groups[groupId].includes(userId)) {
+                groups[groupId] = groups[groupId].filter(id => id !== userId);
+                socket.leave(groupId);
+                io.to(groupId).emit("groupNotification", `${userId} left group ${groupId}`);
+            }
+        }
+    });
+});
+
+export { io, app, server, userSocketMap };

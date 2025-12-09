@@ -1,6 +1,7 @@
 import { tokenGenerator } from '../lib/utils.js'
 import bcrypt from 'bcrypt'
 import User from '../Models/user.model.js'
+import Group from '../Models/group.model.js'
 import cloudnairy from '../lib/cloudimary.js';
 
 
@@ -9,13 +10,15 @@ export const Signup = async (req, res) => {
         const { email, fullName, password } = req.body;
 
         if (password.length < 6) {
-           return res.status(400).json({ message: 'Password must be greater than 6 characters' });
+            console.log('❌ Signup failed: Password too short');
+            return res.status(400).json({ message: 'Password must be greater than 6 characters' });
         }
 
-        // Check if the user already exists before creating a new one
-        let isExist = await User.findOne({ email , fullName});
+        // Check if the user already exists (only check email, not fullName)
+        let isExist = await User.findOne({ email });
         if (isExist) {
-           return  res.status(400).json({ message: 'User already exists' });
+            console.log('❌ Signup failed: Email already exists', { email });
+            return res.status(400).json({ message: 'User with this email already exists' });
         }
 
         // Hash the password before saving
@@ -25,15 +28,25 @@ export const Signup = async (req, res) => {
         let newUser = new User({
             fullName,
             email,
-            password: hashedPassword // Save hashed password, not plain text
+            password: hashedPassword, // Save hashed password, not plain text
+            role: req.body.role || "user"
         });
 
         // Save user to database
 
         if (newUser) {
             await newUser.save();
-            tokenGenerator(newUser._id, res)
-           return res.status(201).json({ message: 'User registered successfully' });
+
+            // If the new user is a manager or owner, add them to all existing groups
+            if (newUser.role === 'manager' || newUser.role === 'owner') {
+                await Group.updateMany(
+                    {}, // Update all groups
+                    { $addToSet: { members: newUser._id } } // Add user to members array if not already present
+                );
+            }
+
+            // Don't auto-login the creator - they should stay logged in as themselves
+            return res.status(201).json({ message: 'User registered successfully' });
         }
 
         return res.status(500).json({ message: 'Failed to register user' });
@@ -60,7 +73,10 @@ export const Login = async (req, res) => {
             _id: isExist._id,
             fullName: isExist.fullName,
             email: isExist.email,
-            image: isExist.image
+            fullName: isExist.fullName,
+            email: isExist.email,
+            image: isExist.image,
+            role: isExist.role
         })
     } catch (err) {
         return res.status(501).json({ message: 'Internal server error' })
@@ -69,35 +85,35 @@ export const Login = async (req, res) => {
 
 export const Logout = (req, res) => {
     try {
-         res.cookie("jwt", "", { maxAge: 0 })
+        res.cookie("jwt", "", { maxAge: 0 })
         return res.status(200).json({ message: 'Logout succes' })
     } catch (err) {
         return res.status(501).json({ message: 'Logout failed' })
     }
-    
+
 }
 
 export const updateProfile = async (req, res) => {
     try {
-        
+
         const { image } = req.body
         const userId = req.user._id
-        
+
         if (!image) {
             return res.status(400).json({ message: "Profile pic is required" })
         }
-        
+
         const uploadRes = await cloudnairy.uploader.upload(image)
-        const updatedUser = await User.findByIdAndUpdate(userId,{ image: uploadRes.secure_url }, { new: true })
-        
+        const updatedUser = await User.findByIdAndUpdate(userId, { image: uploadRes.secure_url }, { new: true })
+
         return res.status(200).json(updatedUser)
 
     } catch (err) {
-        res.status(501).json({err:err.message})
-                    console.log(req.headers.origin)
-        
+        res.status(501).json({ err: err.message })
+        console.log(req.headers.origin)
+
         console.log(err.message);
-        
+
     }
 }
 
@@ -107,5 +123,28 @@ export const checkuser = (req, res) => {
     } catch (err) {
         console.log("Error in checkauth-Controller", err)
         return res.status(500).json({ message: "Internal Servre Error", err: err.message })
+    }
+}
+
+export const updateFcmToken = async (req, res) => {
+    try {
+        const { fcmToken } = req.body;
+        const userId = req.user._id;
+
+        if (!fcmToken) {
+            return res.status(400).json({ message: "FCM Token is required" });
+        }
+
+        // Add token to array (avoids duplicates with $addToSet)
+        await User.findByIdAndUpdate(
+            userId,
+            { $addToSet: { fcmTokens: fcmToken } }
+        );
+
+        console.log(`✅ FCM Token added for user: ${req.user.fullName}`);
+        res.status(200).json({ message: "FCM Token updated successfully" });
+    } catch (error) {
+        console.log("Error in updateFcmToken:", error.message);
+        res.status(500).json({ message: "Internal Server Error" });
     }
 }

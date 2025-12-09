@@ -1,48 +1,91 @@
-import React, { useEffect } from 'react'
+import React, { useEffect } from "react";
+import { useAuthStore } from "./store/useAuthStore";
+import { useThemeStore } from "./store/useThemeStore";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import { Toaster, toast } from "react-hot-toast";
+import { Loader2 as Loader } from "lucide-react";
+import { requestPermission, messaging } from "./lib/firebase";
+import { onMessage } from "firebase/messaging";
 
-import Navbar from './components/Navbar'
-import HomePage from './pages/HomePage'
-import SignupPage from './pages/SignupPage'
-import SettingPage from './pages/SettingPage'
-import ProfilePage from './pages/ProfilePage'
-import LoginPage from './pages/LoginPage'
+// Import your pages and components
+import Navbar from "./components/Navbar";
+import HomePage from "./pages/HomePage";
+import SignupPage from "./pages/SignupPage";
+import LoginPage from "./pages/LoginPage";
+import SettingPage from "./pages/SettingPage";
+import ProfilePage from "./pages/ProfilePage";
+import GroupsListPage from "./pages/GroupsListPage";
+import GroupChatPage from "./pages/GroupChatPage";
+import AddSellerPage from "./pages/AddSellerPage";
 
-import { Toaster } from 'react-hot-toast'
-import { Routes, Route, Navigate } from 'react-router-dom'
-import { useAuthStore } from './store/useAuthStore'
-import { useThemeStore } from './store/useThemeStore'
-import { Loader } from 'lucide-react'
+import { useMessageStore } from "./store/useMessageStore";
 
-function App(get) {
-  const { authUser, checkAuth, isCheckingAuth, onlineUsers } = useAuthStore()
-  const { theme } = useThemeStore()
+function App() {
+  const { authUser, checkAuth, isCheckingAuth, socket } = useAuthStore();
+  const { subscribeToGroupMessages, unsubscribeFromGroupMessages, subcribeToMessages, unsubcribeToMessage } = useMessageStore();
+  const { theme } = useThemeStore();
 
   useEffect(() => {
-    checkAuth()
-    // console.log({onlineUsers});
-  }, [checkAuth,onlineUsers])
+    checkAuth();
+  }, [checkAuth]);
+
+  useEffect(() => {
+    if (authUser && socket) {
+      subscribeToGroupMessages();
+      subcribeToMessages();
+
+      // Request Notification Permission
+      requestPermission().then(token => {
+        if (token) {
+          useAuthStore.getState().saveFcmToken(token);
+        }
+      });
+
+      // Handle Foreground Messages
+      onMessage(messaging, (payload) => {
+        console.log('Message received. ', payload);
+        // Customize how you want to show the notification in foreground
+        // Using toast for now
+        toast((t) => (
+          <div onClick={() => toast.dismiss(t.id)}>
+            <p className="font-bold">{payload.notification.title}</p>
+            <p>{payload.notification.body}</p>
+          </div>
+        ), { duration: 4000, position: 'top-right' });
+      });
+    }
+    return () => {
+      if (socket) {
+        unsubscribeFromGroupMessages();
+        unsubcribeToMessage();
+      }
+    };
+  }, [authUser, socket, subscribeToGroupMessages, unsubscribeFromGroupMessages, subcribeToMessages, unsubcribeToMessage]);
 
   if (isCheckingAuth && !authUser) {
     return (
-      <div className='flex items-center justify-center h-screen'>
-        <Loader className='size-10 animate-spin'></Loader>
+      <div className="flex items-center justify-center h-screen">
+        <Loader className="size-10 animate-spin" />
       </div>
-    )
+    );
   }
+
   return (
     <div data-theme={theme}>
       <Navbar />
       <Routes>
-
-        <Route path='/' element={authUser ? <HomePage /> : <Navigate to="/login" />} />
-        <Route path='/signup' element={!authUser ? <SignupPage /> : <Navigate to="/" />} />
-        <Route path='/login' element={!authUser ? <LoginPage /> : <Navigate to="/signup" />} />
-        <Route path='/setting' element={<SettingPage />} />
-        <Route path='/profile' element={authUser ? <ProfilePage /> : <Navigate to="/login" />} />
+        <Route path="/" element={authUser ? <HomePage /> : <Navigate to="/login" />} />
+        <Route path="/signup" element={!authUser || authUser.role === 'manager' || authUser.role === 'owner' ? <SignupPage /> : <Navigate to="/" />} />
+        <Route path="/login" element={!authUser ? <LoginPage /> : <Navigate to="/" />} />
+        <Route path="/setting" element={<SettingPage />} />
+        <Route path="/profile" element={authUser ? <ProfilePage /> : <Navigate to="/login" />} />
+        <Route path="/groups" element={authUser ? <GroupsListPage /> : <Navigate to="/login" />} />
+        <Route path="/group/:groupId" element={authUser ? <GroupChatPage /> : <Navigate to="/login" />} />
+        <Route path="/add-seller" element={authUser ? <AddSellerPage /> : <Navigate to="/login" />} />
       </Routes>
       <Toaster />
     </div>
-  )
+  );
 }
 
-export default App
+export default App;
