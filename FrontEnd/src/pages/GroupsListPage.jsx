@@ -1,12 +1,13 @@
-import React, { use, useEffect, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useMessageStore } from '../store/useMessageStore'
-import { Users, MessageSquare, Search } from 'lucide-react'
+import { Users, MessageSquare, Search, Bell, Clock, UserCheck } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 
 function GroupsListPage() {
-    const { groups, getGroups, unreadCounts , sellerIndex} = useMessageStore()
+    const { groups, getGroups, unreadCounts, sellerIndex } = useMessageStore()
     const navigate = useNavigate()
     const [searchTerm, setSearchTerm] = useState('')
+    const [showUnreadOnly, setShowUnreadOnly] = useState(false)
 
     useEffect(() => {
         getGroups()
@@ -16,12 +17,18 @@ function GroupsListPage() {
         navigate(`/group/${group._id}`)
     }
 
-    // Filter groups based on search term
+    // Filter groups based on search term and unread messages
     const filteredGroups = groups.filter(group => {
         const searchLower = searchTerm.toLowerCase()
         const groupName = `${Math.abs(group.sellerIndex + 1)} - ${group.sellerId?.companyName || ''}`.toLowerCase()
         const sellerName = group.sellerId?.name?.toLowerCase() || ''
-        return groupName.includes(searchLower) || sellerName.includes(searchLower)
+        const matchesSearch = groupName.includes(searchLower) || sellerName.includes(searchLower)
+        
+        // If showUnreadOnly is true, only show groups with unread messages
+        const hasUnread = unreadCounts[group._id] > 0
+        const matchesUnread = showUnreadOnly ? hasUnread : true
+        
+        return matchesSearch && matchesUnread
     })
 
     return (
@@ -45,6 +52,24 @@ function GroupsListPage() {
                                 onChange={(e) => setSearchTerm(e.target.value)}
                             />
                         </div>
+                    </div>
+
+                    {/* Filter Toggle */}
+                    <div className='flex justify-between items-center mb-6'>
+                        <div className='text-sm text-base-content/60'>
+                            {filteredGroups.length} of {groups.length} groups
+                        </div>
+                        <button
+                            onClick={() => setShowUnreadOnly(!showUnreadOnly)}
+                            className={`btn btn-sm ${showUnreadOnly ? 'btn-primary' : 'btn-ghost'}`}
+                        >
+                            {showUnreadOnly ? 'Show All Groups' : 'Show Unread Only'}
+                            {showUnreadOnly && (
+                                <span className='badge badge-sm badge-warning ml-2'>
+                                    {groups.filter(g => unreadCounts[g._id] > 0).length}
+                                </span>
+                            )}
+                        </button>
                     </div>
 
                     {filteredGroups.length === 0 && groups.length > 0 ? (
@@ -84,7 +109,7 @@ function GroupsListPage() {
                                                 </div>
                                                 {group.sellerId && (
                                                     <div className='mt-2 text-xs text-base-content/50'>
-                                                        <p>Saller: {group.sellerId.name}</p>
+                                                        <p>Seller: {group.sellerId.name}</p>
                                                     </div>
                                                 )}
                                             </div>

@@ -2,7 +2,7 @@ import React, { useEffect, useRef } from 'react'
 import { useMessageStore } from '../store/useMessageStore'
 import { useAuthStore } from '../store/useAuthStore'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Users, Send, Image as ImageIcon, X, UserPlus, UserMinus, Paperclip, File, Trash2 } from 'lucide-react'
+import { ArrowLeft, Users, Send, Image as ImageIcon, X, UserPlus, UserMinus, Paperclip, File, Trash2, Search } from 'lucide-react'
 import { DateFormated } from '../lib/utills'
 import { useState } from 'react'
 import toast from 'react-hot-toast'
@@ -21,9 +21,15 @@ function GroupChatPage() {
     const [allUsers, setAllUsers] = useState([])
     const [selectedUserId, setSelectedUserId] = useState('')
     const [filterPending, setFilterPending] = useState(false)
-    const messaeEndRef = useRef(null)
+    const [userSearchTerm, setUserSearchTerm] = useState('')
+    const messageEndRef = useRef(null)
     const fileInputRef = useRef(null)
     const documentFileInputRef = useRef(null)
+
+    // Add this filteredMessages logic
+    const filteredMessages = filterPending 
+        ? groupMessages.filter(msg => msg.image || msg.fileUrl)
+        : groupMessages
 
     useEffect(() => {
         getGroups()
@@ -41,8 +47,8 @@ function GroupChatPage() {
     }, [groups, groupId])
 
     useEffect(() => {
-        if (messaeEndRef.current && groupMessages) {
-            messaeEndRef.current.scrollIntoView({ behavior: "smooth" })
+        if (messageEndRef.current && groupMessages) {
+            messageEndRef.current.scrollIntoView({ behavior: "smooth" })
         }
     }, [groupMessages])
 
@@ -78,7 +84,7 @@ function GroupChatPage() {
 
     const fetchAllUsers = async () => {
         try {
-            const response = await axiosInstance.get('/users/all')
+            const response = await axiosInstance.get('/message/users')
             setAllUsers(response.data)
         } catch (error) {
             console.error('Error fetching users:', error)
@@ -359,7 +365,7 @@ function GroupChatPage() {
                             filteredMessages.map((msg) => (
                                 msg.isSystemMessage ? (
                                     // System Message (centered)
-                                    <div key={msg._id} className='flex justify-center my-4' ref={messaeEndRef}>
+                                    <div key={msg._id} className='flex justify-center my-4' ref={messageEndRef}>
                                         <div className='bg-base-300 px-4 py-2 rounded-full text-xs text-base-content/60'>
                                             {msg.text}
                                         </div>
@@ -369,7 +375,7 @@ function GroupChatPage() {
                                     <div
                                         key={msg._id}
                                         className={`chat ${msg.senderId?._id === authUser._id ? "chat-end" : "chat-start"} group`}
-                                        ref={messaeEndRef}
+                                        ref={messageEndRef}
                                     >
                                         <div className='chat-image avatar'>
                                             <div className='size-10 rounded-full border'>
@@ -553,25 +559,67 @@ function GroupChatPage() {
                         <button className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">✕</button>
                     </form>
                     <h3 className="font-bold text-lg mb-4">Add Member to Group</h3>
-                    <div className="form-control">
-                        <label className="label">
-                            <span className="label-text">Select User</span>
-                        </label>
-                        <select
-                            className="select select-bordered w-full"
-                            value={selectedUserId}
-                            onChange={(e) => setSelectedUserId(e.target.value)}
-                        >
-                            <option value="">Choose a user...</option>
-                            {allUsers
-                                .filter(user => !selectedGroup.members?.some(m => m._id === user._id))
-                                .map(user => (
-                                    <option key={user._id} value={user._id}>
-                                        {user.fullName} ({user.email}) - {user.role || 'user'}
-                                    </option>
-                                ))
-                            }
-                        </select>
+                    
+                    {/* Search Bar */}
+                    <div className="form-control mb-4">
+                        <div className="input input-bordered flex items-center gap-2">
+                            <Search className="size-4 text-base-content/40" />
+                            <input
+                                type="text"
+                                placeholder="Search users by name or email..."
+                                className="grow bg-transparent outline-none text-sm"
+                                value={userSearchTerm}
+                                onChange={(e) => setUserSearchTerm(e.target.value)}
+                            />
+                        </div>
+                    </div>
+
+                    {/* Users List */}
+                    <div className="max-h-60 overflow-y-auto space-y-2 mb-4">
+                        {allUsers
+                            .filter(user => !selectedGroup.members?.some(m => m._id === user._id))
+                            .filter(user => {
+                                const searchLower = userSearchTerm.toLowerCase()
+                                return user.fullName.toLowerCase().includes(searchLower) ||
+                                       user.email.toLowerCase().includes(searchLower)
+                            })
+                            .map(user => (
+                                <div
+                                    key={user._id}
+                                    className={`p-3 rounded-lg border cursor-pointer transition-all ${
+                                        selectedUserId === user._id
+                                            ? 'bg-primary text-primary-content border-primary'
+                                            : 'bg-base-200 hover:bg-base-300 border-base-300'
+                                    }`}
+                                    onClick={() => setSelectedUserId(user._id)}
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <div className="avatar">
+                                            <div className="w-8 rounded-full">
+                                                <img src={user.image || '/avatar.png'} alt={user.fullName} />
+                                            </div>
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="font-medium text-sm truncate">{user.fullName}</p>
+                                            <p className="text-xs opacity-70 truncate">{user.email}</p>
+                                        </div>
+                                        <div className="badge badge-sm">
+                                            {user.role || 'user'}
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        {allUsers.filter(user => !selectedGroup.members?.some(m => m._id === user._id))
+                            .filter(user => {
+                                const searchLower = userSearchTerm.toLowerCase()
+                                return user.fullName.toLowerCase().includes(searchLower) ||
+                                       user.email.toLowerCase().includes(searchLower)
+                            }).length === 0 && (
+                            <div className="text-center py-8 text-base-content/60">
+                                <Search className="size-8 mx-auto mb-2 opacity-50" />
+                                <p className="text-sm">No users found</p>
+                            </div>
+                        )}
                     </div>
                     <div className="modal-action">
                         <button
