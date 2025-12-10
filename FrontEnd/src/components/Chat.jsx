@@ -18,7 +18,11 @@ function Chat() {
     isSelectionMode,
     selectedMessageIds,
     toggleMessageSelection,
-    deleteMessages
+    deleteMessages,
+    subcribeToMessages,
+    unsubcribeToMessage,
+    subscribeToGroupMessages,
+    unsubscribeFromGroupMessages
   } = useMessageStore();
 
   const { authUser } = useAuthStore();
@@ -28,10 +32,33 @@ function Chat() {
   useEffect(() => {
     if (selectedUser?._id) {
       getMessage(selectedUser._id);
+      subcribeToMessages();
     } else if (selectedGroup?._id) {
       getGroupMessages(selectedGroup._id);
+      subscribeToGroupMessages();
     }
   }, [selectedUser?._id, selectedGroup?._id]);
+
+  // Cleanup socket subscriptions when component unmounts or user/group changes
+  useEffect(() => {
+    return () => {
+      unsubcribeToMessage();
+      unsubscribeFromGroupMessages();
+    };
+  }, [selectedUser?._id, selectedGroup?._id]);
+
+  useEffect(() => {
+    console.log('Message state updated:', {
+      messageCount: message.length,
+      messages: message.map(m => ({
+        id: m._id,
+        senderId: m.senderId,
+        senderIdId: m.senderId?._id,
+        text: m.text,
+        isTemp: m.isTemp
+      }))
+    });
+  }, [message]);
 
   useEffect(() => {
     if (messageEndRef.current && message && !isSelectionMode) {
@@ -57,25 +84,35 @@ function Chat() {
 
   return (
     <>
-      <div className='flex-1 flex flex-col overflow-auto relative'>
-        <ChatHeader className='z-2 bg-atech ' />
+      <div className='flex-1 flex flex-col overflow-auto relative md:px-4 lg:px-6 xl:px-8'>
+        <ChatHeader className='z-2 bg-atech sticky top-0' />
 
         {isSelectionMode && selectedMessageIds.length > 0 && (
-          <div className='absolute top-20 left-1/2 -translate-x-1/2 z-50'>
+          <div className='absolute top-16 sm:top-20 left-1/2 -translate-x-1/2 z-50'>
             <button
               onClick={handleDeleteSelected}
-              className='btn btn-error shadow-lg gap-2'
+              className='btn btn-error btn-xs sm:btn-sm md:btn-md lg:btn-lg shadow-lg gap-2'
             >
-              <Trash2 className='size-4' />
-              Delete {selectedMessageIds.length} Selected
+              <Trash2 className='size-3 sm:size-4' />
+              Delete {selectedMessageIds.length}
             </button>
           </div>
         )}
 
-        <div className='flex-1 overflow-y-auto p-4 space-y-4'>
+        <div className='flex-1 overflow-y-auto p-2 sm:p-4 space-y-3 sm:space-y-4'>
           {message.map((v) => {
             const isOwnMessage =
               v.senderId === authUser._id || v.senderId?._id === authUser._id;
+
+            console.log('Rendering message:', {
+              messageId: v._id,
+              senderId: v.senderId,
+              senderIdId: v.senderId?._id,
+              authUserId: authUser._id,
+              isOwnMessage,
+              messageText: v.text,
+              isTemp: v.isTemp
+            });
 
             return (
               <div
@@ -87,7 +124,7 @@ function Chat() {
                 {isSelectionMode && isOwnMessage && (
                   <input
                     type='checkbox'
-                    className='checkbox checkbox-primary'
+                    className='checkbox checkbox-primary checkbox-xs'
                     checked={selectedMessageIds.includes(v._id)}
                     onChange={() => toggleMessageSelection(v._id)}
                   />
@@ -101,8 +138,8 @@ function Chat() {
                     isSelectionMode && isOwnMessage && toggleMessageSelection(v._id)
                   }
                 >
-                  <div className='chat-image avatar'>
-                    <div className='size-10 rounded-full border'>
+                  <div className='chat-image avatar flex-shrink-0'>
+                    <div className='size-8 sm:size-10 rounded-full border'>
                       <img
                         src={
                           isOwnMessage
@@ -115,8 +152,8 @@ function Chat() {
                     </div>
                   </div>
 
-                  <div className='chat-header'>
-                    <time className='text-xs opacity-50 ml-1'>
+                  <div className='chat-header flex items-center gap-1 sm:gap-2 flex-wrap'>
+                    <time className='text-xs opacity-50'>
                       {DateFormated(v.createdAt)}
                     </time>
                   </div>
@@ -139,7 +176,7 @@ function Chat() {
                           {v.image && (
                             <img
                               src={v.image}
-                              className='sm:max-w-[200px] rounded mb-2'
+                              className='max-w-[150px] sm:max-w-[200px] rounded mb-2'
                             />
                           )}
                           {v.text && <p>{v.text}</p>}
@@ -155,7 +192,7 @@ function Chat() {
           <div ref={messageEndRef}></div>
         </div>
 
-        <MessageInput className='z-1 fixed' />
+        <MessageInput />
       </div>
     </>
   );

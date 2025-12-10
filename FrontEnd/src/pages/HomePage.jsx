@@ -1,13 +1,26 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { useAuthStore } from '../store/useAuthStore'
 import Sidebar from '../components/Sidebar'
 import NoChatSelected from '../components/NoChatSelected'
 import Chat from '../components/Chat'
 import { useMessageStore } from '../store/useMessageStore'
 import GroupPage from '../pages/GroupPage'
+import { ArrowLeft } from 'lucide-react'
 
 function HomePage() {
-  const { selectedUser, selectedGroup, isOn } = useMessageStore()
+  const { selectedUser, selectedGroup, isOn, setSelectedUser, setSelectedGroup } = useMessageStore()
+  const [showSidebar, setShowSidebar] = useState(true)
+  
+  const handleBackToSidebar = () => {
+    setSelectedUser(null)
+    setSelectedGroup(null)
+    setShowSidebar(true)
+  }
+  
+  const handleSelectUser = (user) => {
+    setSelectedUser(user)
+    setShowSidebar(false)
+  }
 
   return (
     <>
@@ -15,21 +28,70 @@ function HomePage() {
         <div className='flex items-center justify-center pi-20 px-4'>
           <div className='bg-base-100 rounded-lg shadow-xl w-full max-w-6xl h-[calc(100vh-8rem)]'>
             <div className='flex h-full rounded-lg overflow-hidden'>
-              <Sidebar />
+              {/* Mobile: Show only one at a time */}
+              <div className='lg:hidden flex h-full w-full'>
+                {!selectedUser && !selectedGroup && !isOn ? (
+                  <Sidebar onSelectUser={handleSelectUser} />
+                ) : (
+                  <div className='w-full flex flex-col'>
+                    {/* Mobile chat header with back button */}
+                    <div className='flex items-center gap-2 p-3 border-b border-base-300 bg-base-100'>
+                      <button
+                        onClick={handleBackToSidebar}
+                        className='btn btn-ghost btn-circle btn-sm'
+                      >
+                        <ArrowLeft className='size-4' />
+                      </button>
+                      <span className='font-medium text-sm truncate'>
+                        {selectedUser?.fullName || selectedGroup?.name || 'Chat'}
+                      </span>
+                    </div>
+                    <div className='flex-1 overflow-hidden'>
+                      {isOn ? (
+                        <GroupPage />
+                      ) : selectedUser ? (
+                        <Chat />
+                      ) : selectedGroup ? (
+                        <Chat />
+                      ) : null}
+                    </div>
+                  </div>
+                )}
+              </div>
 
-              {isOn ? (
-                <GroupPage />
-              ) : selectedUser ? (
-                <Chat />
-              ) : selectedGroup ? (
-                <Chat />
-              ) : (
-                <NoChatSelected />
-              )}
+              {/* Desktop: Show sidebar when no chat, chat when selected */}
+              <div className='hidden lg:flex h-full w-full'>
+                {!selectedUser && !selectedGroup && !isOn ? (
+                  <Sidebar onSelectUser={handleSelectUser} />
+                ) : (
+                  <div className='w-full flex flex-col'>
+                    {/* Desktop chat header with back button */}
+                    <div className='flex items-center gap-2 p-3 border-b border-base-300 bg-base-100'>
+                      <button
+                        onClick={handleBackToSidebar}
+                        className='btn btn-ghost btn-circle btn-sm'
+                      >
+                        <ArrowLeft className='size-4' />
+                      </button>
+                      <span className='font-medium truncate'>
+                        {selectedUser?.fullName || selectedGroup?.name || 'Chat'}
+                      </span>
+                    </div>
+                    <div className='flex-1 overflow-hidden'>
+                      {isOn ? (
+                        <GroupPage />
+                      ) : selectedUser ? (
+                        <Chat />
+                      ) : selectedGroup ? (
+                        <Chat />
+                      ) : null}
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
-
           </div>
-        </div >
+        </div>
       </div>
     </>
   )

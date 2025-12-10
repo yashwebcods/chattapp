@@ -297,15 +297,15 @@ function GroupChatPage() {
 
     return (
         <div className='min-h-screen bg-base-200 pt-16'>
-            <div className='max-w-6xl mx-auto h-[calc(100vh-4rem)]'>
-                <div className='bg-base-100 rounded-lg shadow-xl h-full flex flex-col'>
+            <div className='w-full h-[calc(100vh-4rem)] max-w-full'>
+                <div className='bg-base-100 rounded-none sm:rounded-lg shadow-xl h-full flex flex-col'>
                     {/* Header */}
-                    <div className='flex items-center gap-4 p-4 border-b border-base-300'>
+                    <div className='flex items-center gap-2 sm:gap-4 p-3 sm:p-4 border-b border-base-300'>
                         <button
                             onClick={() => navigate('/groups')}
                             className='btn btn-ghost btn-sm btn-circle'
                         >
-                            <ArrowLeft className='size-5' />
+                            <ArrowLeft className='size-4 sm:size-5' />
                         </button>
                         <div className='flex items-center gap-3 flex-1'>
                             <div className='avatar placeholder'>
@@ -354,7 +354,7 @@ function GroupChatPage() {
                     </div>
 
                     {/* Messages */}
-                    <div className='flex-1 overflow-y-auto p-4 space-y-4'>
+                    <div className='flex-1 overflow-y-auto p-2 sm:p-4 space-y-3 sm:space-y-4'>
                         {filteredMessages.length === 0 ? (
                             <div className='text-center py-12'>
                                 <p className='text-base-content/60'>
@@ -403,7 +403,7 @@ function GroupChatPage() {
                                         </div>
                                         <div className={`chat-bubble flex flex-col ${msg.isDeleted ? 'italic opacity-70' : ''}`}>
                                             {msg.image && (
-                                                <img src={msg.image} className='sm:max-w-[200px] rounded mb-2' alt="message" />
+                                                <img src={msg.image} className='max-w-[100px] xs:max-w-[120px] sm:max-w-[150px] md:max-w-[200px] rounded mb-2' alt="message" />
                                             )}
                                             {msg.fileUrl && (
                                                 <a
@@ -411,9 +411,9 @@ function GroupChatPage() {
                                                     download={msg.fileName || 'file'}
                                                     target="_blank"
                                                     rel="noopener noreferrer"
-                                                    className='flex items-center gap-2 p-3 bg-base-300 rounded-lg hover:bg-base-200 transition mb-2 cursor-pointer'
+                                                    className='flex items-center gap-1 sm:gap-2 p-2 sm:p-3 bg-base-300 rounded-lg hover:bg-base-200 transition mb-2 cursor-pointer'
                                                 >
-                                                    <File className='size-6 text-primary' />
+                                                    <File className='size-4 sm:size-5 md:size-6 text-primary' />
                                                     <div className='flex-1 min-w-0'>
                                                         <p className='font-medium truncate'>{msg.fileName || 'File'}</p>
                                                         <p className='text-xs opacity-70'>Click to download/view</p>
@@ -429,7 +429,7 @@ function GroupChatPage() {
                     </div>
 
                     {/* Input */}
-                    <div className='p-4 border-t border-base-300'>
+                    <div className='p-3 sm:p-4 border-t border-base-300'>
                         {imagePreview && (
                             <div className='mb-3 relative inline-block'>
                                 <img src={imagePreview} className='max-w-[200px] rounded-lg' alt="preview" />

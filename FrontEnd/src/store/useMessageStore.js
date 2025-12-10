@@ -46,6 +46,17 @@ export const useMessageStore = create(persist((set, get) => ({
 
     sendMessages: async (messageData) => {
         const { selectedUser, selectedGroup } = get();
+        const socket = useAuthStore.getState().socket;
+        const authUser = useAuthStore.getState().authUser;
+        
+        console.log('sendMessages called:', {
+            selectedUser: selectedUser?.fullName,
+            selectedGroup: selectedGroup?.name,
+            messageData,
+            socketConnected: !!socket,
+            authUser: authUser?.fullName
+        });
+        
         try {
             const endpoint = selectedGroup
                 ? `/message/send/undefined`
@@ -57,11 +68,33 @@ export const useMessageStore = create(persist((set, get) => ({
                 ? { ...messageData, groupId: selectedGroup._id }
                 : messageData;
 
+            console.log('Sending message to endpoint:', endpoint, 'data:', data);
+            
+            // Create temporary message for immediate display
+            const tempMessage = {
+                ...messageData,
+                _id: `temp_${Date.now()}`,
+                senderId: authUser,
+                ...(selectedGroup ? { groupId: selectedGroup._id } : { receiverId: selectedUser._id }),
+                createdAt: new Date().toISOString(),
+                isTemp: true
+            };
+            
+            // Add temporary message to state immediately
+            set({ message: [...get().message, tempMessage] });
+            
             const res = await axiosInstance.post(endpoint, data);
-
-            // DON'T append to state here - wait for socket
-            return res.data;
+            
+            // Replace temporary message with real server message
+            setTimeout(() => {
+                set({ message: get().message.map(msg => 
+                    msg._id === tempMessage._id ? res.data : msg
+                )});
+            }, 100);
+            
+            console.log('Message sent successfully');
         } catch (error) {
+            console.error('Send message error:', error);
             toast.error(error.response?.data?.message || "Failed to send message");
             return null; // Return null on error so input can still clear
         }
@@ -70,8 +103,36 @@ export const useMessageStore = create(persist((set, get) => ({
     subcribeToMessages: () => {
         const socket = useAuthStore.getState().socket;
         console.log("subcribeToMessages called. Socket:", socket ? "Connected" : "Null");
-        if (!socket) return;
-
+        
+        if (!socket) {
+            console.log("No socket found, attempting to connect...");
+            useAuthStore.getState().connectSocket();
+            // Retry after connection
+            setTimeout(() => {
+                const newSocket = useAuthStore.getState().socket;
+                if (newSocket?.connected) {
+                    get().setupMessageListener(newSocket);
+                }
+            }, 1000);
+            return;
+        }
+        
+        if (!socket.connected) {
+            console.log("Socket not connected, waiting for connection...");
+            socket.on('connect', () => {
+                console.log("Socket connected, subscribing to messages...");
+                get().setupMessageListener(socket);
+            });
+            return;
+        }
+        
+        get().setupMessageListener(socket);
+    },
+    
+    setupMessageListener: (socket) => {
+        // Remove existing listener to prevent duplicates
+        socket.off("newMessage");
+        
         socket.on("newMessage", (newMessage) => {
             console.log("newMessage event received:", newMessage);
             const { selectedUser, message, unreadCounts } = get();
@@ -85,6 +146,10 @@ export const useMessageStore = create(persist((set, get) => ({
                 newMessage.receiverId?._id === selectedUser._id
             );
 
+            // Check if this is my own message
+            const isMyMessage = newMessage.senderId === authUser._id || 
+                               newMessage.senderId?._id === authUser._id;
+
             // If this message is from/to the currently selected user, add it to the chat
             if (isFromSelectedUser && !message.some(msg => msg._id === newMessage._id)) {
                 set({ message: [...message, newMessage] });
@@ -97,8 +162,6 @@ export const useMessageStore = create(persist((set, get) => ({
             } else {
                 // Otherwise, show a notification and increment unread count
                 // Don't show notification for our own messages to other users
-                const isMyMessage = newMessage.senderId === authUser._id || newMessage.senderId?._id === authUser._id;
-
                 if (!isMyMessage) {
                     const senderName = newMessage.senderId?.fullName || 'Someone';
                     toast.success(`New message from ${senderName}`, { duration: 2000 });
@@ -120,6 +183,8 @@ export const useMessageStore = create(persist((set, get) => ({
         const socket = useAuthStore.getState().socket;
         if (socket) {
             socket.off("newMessage");
+            socket.off("connect");
+            console.log("Unsubscribed from newMessage events");
         }
     },
 

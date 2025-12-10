@@ -42,32 +42,32 @@ function SignupPage() {
     <div className="min-h-screen grid lg:grid-cols-2 mt-12">
       {/* LEFT SIDE */}
       <div className="flex flex-col justify-center items-center p-6 sm:p-12">
-        <div className="w-full max-w-md space-y-8">
+        <div className="w-full max-w-sm sm:max-w-md space-y-6 sm:space-y-8">
           {/* Logo */}
-          <div className="text-center mb-8">
+          <div className="text-center mb-6 sm:mb-8">
             <div className="flex flex-col items-center gap-2 group">
-              <div className="size-12 rounded-2xl bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
-                <MessageSquare className="size-6 text-primary" />
+              <div className="size-10 sm:size-12 rounded-2xl bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+                <MessageSquare className="size-5 sm:size-6 text-primary" />
               </div>
-              <h1 className="text-2xl font-bold mt-2">Create Account</h1>
-              <p className="text-base-content/60">
+              <h1 className="text-xl sm:text-2xl font-bold mt-2">Create Account</h1>
+              <p className="text-sm sm:text-base text-base-content/60">
                 Get started with your free account
               </p>
             </div>
           </div>
 
           {/* FORM */}
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
             {/* Full Name */}
             <div className="form-control">
               <label className="label">
                 <span className="label-text font-medium">Full Name</span>
               </label>
               <div className="relative">
-                <User className="size-5 absolute left-3 top-3 text-base-content/40" />
+                <User className="size-4 sm:size-5 absolute left-3 top-1/2 -translate-y-1/2 text-base-content/40" />
                 <input
                   type="text"
-                  className="input input-bordered w-full pl-10"
+                  className="input input-bordered w-full pl-10 text-sm sm:text-base"
                   placeholder="John Doe"
                   value={formData.fullName}
                   onChange={(e) =>
@@ -83,10 +83,10 @@ function SignupPage() {
                 <span className="label-text font-medium">Email</span>
               </label>
               <div className="relative">
-                <Mail className="size-5 absolute left-3 top-3 text-base-content/40" />
+                <Mail className="size-4 sm:size-5 absolute left-3 top-1/2 -translate-y-1/2 text-base-content/40" />
                 <input
                   type="text"
-                  className="input input-bordered w-full pl-10"
+                  className="input input-bordered w-full pl-10 text-sm sm:text-base"
                   placeholder="example@gmail.com"
                   value={formData.email}
                   onChange={(e) =>
@@ -102,10 +102,10 @@ function SignupPage() {
                 <span className="label-text font-medium">Password</span>
               </label>
               <div className="relative">
-                <Lock className="size-5 absolute left-3 top-3 text-base-content/40" />
+                <Lock className="size-4 sm:size-5 absolute left-3 top-1/2 -translate-y-1/2 text-base-content/40" />
                 <input
                   type={showPassword ? "text" : "password"}
-                  className="input input-bordered w-full pl-10"
+                  className="input input-bordered w-full pl-10 text-sm sm:text-base"
                   placeholder="••••••••"
                   value={formData.password}
                   onChange={(e) =>
@@ -118,9 +118,9 @@ function SignupPage() {
                   onClick={() => setShowPassword(!showPassword)}
                 >
                   {showPassword ? (
-                    <EyeOff className="size-5 text-base-content/40" />
+                    <EyeOff className="size-4 sm:size-5 text-base-content/40" />
                   ) : (
-                    <Eye className="size-5 text-base-content/40" />
+                    <Eye className="size-4 sm:size-5 text-base-content/40" />
                   )}
                 </button>
               </div>
@@ -132,7 +132,7 @@ function SignupPage() {
                 <span className="label-text font-medium">Role</span>
               </label>
               <select
-                className="select select-bordered w-full"
+                className="select select-bordered w-full text-sm sm:text-base"
                 value={formData.role}
                 onChange={(e) =>
                   setFormData({ ...formData, role: e.target.value })
@@ -162,16 +162,16 @@ function SignupPage() {
             >
               {isSigningUp ? (
                 <>
-                  <Loader2 className="size-5 animate-spin" />
-                  Creating Account...
+                  <Loader2 className="size-4 sm:size-5 animate-spin" />
+                  <span className="text-sm sm:text-base">Creating Account...</span>
                 </>
               ) : (
-                "Create Account"
+                <span className="text-sm sm:text-base">Create Account</span>
               )}
             </button>
           </form>
 
-          <p className="text-sm text-center mt-4">
+          <p className="text-xs sm:text-sm text-center mt-4">
             Already have an account?{" "}
             <Link to="/login" className="link link-primary">
               Sign in

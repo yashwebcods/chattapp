@@ -44,7 +44,7 @@ export const MessageInput = () => {
     if (fileInput.current) fileInput.current.value = ''
   }
   return (
-    <div className='p-w w-full p-3'>
+    <div className='w-full p-3 sm:p-4'>
       {/* Selected image Preview  */}
       {imagePreview && (
         <div className="mb-3 flex items-center gap-2">
@@ -69,7 +69,7 @@ export const MessageInput = () => {
       <form onSubmit={handleSendMessage}>
         <div className='flex-1 flex gap-2 items-center '>
           <input type="text"
-            className='w-full input input-bordered rounded-lg input-sm sm:input-md'
+            className='flex-1 input input-bordered rounded-lg input-xs sm:input-sm md:input-md'
             placeholder='Type a message'
             value={text}
             onChange={(e) => setText(e.target.value)}
@@ -86,7 +86,7 @@ export const MessageInput = () => {
             <Image size={20} />
           </button>
           <button type='submit'
-            className='btn btn-circle btn-sm'
+            className='btn btn-circle btn-xs sm:btn-sm'
             disabled={!text.trim() && !imagePreview}
           >
             <Send size={20} />
