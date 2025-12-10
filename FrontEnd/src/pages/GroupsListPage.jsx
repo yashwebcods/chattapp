@@ -4,7 +4,7 @@ import { Users, MessageSquare, Search, Bell, Clock, UserCheck } from 'lucide-rea
 import { useNavigate } from 'react-router-dom'
 
 function GroupsListPage() {
-    const { groups, getGroups, unreadCounts, sellerIndex } = useMessageStore()
+    const { groups, getGroups, unreadCounts, sellerIndex, clearUnreadCount } = useMessageStore()
     const navigate = useNavigate()
     const [searchTerm, setSearchTerm] = useState('')
     const [showUnreadOnly, setShowUnreadOnly] = useState(false)
@@ -14,6 +14,7 @@ function GroupsListPage() {
     }, [])
 
     const handleGroupClick = (group) => {
+        clearUnreadCount(group._id)
         navigate(`/group/${group._id}`)
     }
 

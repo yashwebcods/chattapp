@@ -88,6 +88,12 @@ export const useMessageStore = create(persist((set, get) => ({
             // If this message is from/to the currently selected user, add it to the chat
             if (isFromSelectedUser && !message.some(msg => msg._id === newMessage._id)) {
                 set({ message: [...message, newMessage] });
+            } else if (isMyMessage && selectedUser && (
+                newMessage.receiverId === selectedUser._id ||
+                newMessage.receiverId?._id === selectedUser._id
+            ) && !message.some(msg => msg._id === newMessage._id)) {
+                // Add our own sent message to the chat if we're sending to the selected user
+                set({ message: [...message, newMessage] });
             } else {
                 // Otherwise, show a notification and increment unread count
                 // Don't show notification for our own messages to other users
@@ -169,6 +175,16 @@ export const useMessageStore = create(persist((set, get) => ({
                     [newMessage.groupId]: (unreadCounts[newMessage.groupId] || 0) + 1
                 }
             });
+        });
+    },
+
+    clearUnreadCount: (groupId) => {
+        const { unreadCounts } = get();
+        set({
+            unreadCounts: {
+                ...unreadCounts,
+                [groupId]: 0
+            }
         });
     },
 
