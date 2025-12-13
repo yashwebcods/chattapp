@@ -113,117 +113,103 @@ export const sendMessage = async (req, res) => {
         });
 
         await newMessage.save();
-
-        // Populate sender data
         await newMessage.populate("senderId", "fullName image");
 
-        console.log('💾 Message saved:', {
-            _id: newMessage._id,
-            fileUrl: newMessage.fileUrl,
-            fileName: newMessage.fileName,
-            messageType: newMessage.messageType
-        });
+        // Send Response to Client IMMEDIATELY
+        res.status(201).json(newMessage);
 
-        // Send Push Notification
-        try {
-            let notificationTitle = req.user.fullName;
-            if (groupId) {
-                const group = await Group.findById(groupId);
-                if (group) {
-                    notificationTitle = `New message from ${group.name}`;
-                }
-            }
-
-            const notificationPayload = {
-                notification: {
-                    title: notificationTitle,
-                    body: text || (image ? 'Sent an image' : 'Sent a file')
-                },
-                data: {
-                    messageId: newMessage._id.toString(),
-                    senderId: senderId.toString(),
-                    type: groupId ? 'group' : 'chat',
-                    id: groupId ? groupId.toString() : senderId.toString()
-                }
-            };
-
-            // DIRECT MESSAGE - Send notification if receiver is offline
-            if (receiverId && receiverId !== "undefined") {
-                const receiverSocketId = getReseverSocketId(receiverId);
-                console.log(`🔍 Checking receiver ${receiverId} status. SocketID: ${receiverSocketId ? 'Online' : 'Offline'}`);
-
-                // Only send notification if user is NOT online (no socket connection)
-                if (!receiverSocketId) {
-                    const receiver = await User.findById(receiverId);
-                    if (receiver?.fcmTokens && receiver.fcmTokens.length > 0) {
-                        // Send to all devices
-                        await admin.messaging().sendEachForMulticast({
-                            tokens: receiver.fcmTokens,
-                            ...notificationPayload
-                        });
-                        console.log(`📲 Push notification sent to ${receiver.fcmTokens.length} device(s) of offline user: ${receiver.fullName}`);
-                    } else {
-                        console.log(`⚠️ User ${receiver?.fullName} is offline but has NO FCM tokens`);
-                    }
-                } else {
-                    console.log(`⏭️ User is online, skipping push notification`);
-                }
-            }
-            // GROUP MESSAGE - Send notification to offline members only
-            else if (groupId) {
-                const group = await Group.findById(groupId).populate('members');
-                if (group) {
-                    // Import userSocketMap to check online status
-                    const { userSocketMap } = await import('../lib/socket.js');
-                    const onlineUserIds = Object.keys(userSocketMap);
-
-                    // Filter offline members and collect all their device tokens
-                    const offlineTokens = group.members
-                        .filter(member => {
-                            const memberId = member._id.toString();
-                            const isNotSender = memberId !== senderId.toString();
-                            const isOffline = !onlineUserIds.includes(memberId);
-                            const hasTokens = member.fcmTokens && member.fcmTokens.length > 0;
-                            return isNotSender && isOffline && hasTokens;
-                        })
-                        .flatMap(member => member.fcmTokens); // Collect all tokens from all devices
-
-                    if (offlineTokens.length > 0) {
-                        await admin.messaging().sendEachForMulticast({
-                            tokens: offlineTokens,
-                            ...notificationPayload
-                        });
-                        console.log(`📲 Push notifications sent to ${offlineTokens.length} device(s) of offline group members`);
-                    } else {
-                        console.log(`⏭️ All group members are online, skipping push notifications`);
+        // BACKGROUND TASKS: Socket.io & Push Notifications
+        // We do not await these for the HTTP response to be fast.
+        (async () => {
+            try {
+                /* SOCKET IO EVENTS */
+                // DIRECT MESSAGE
+                if (receiverId && receiverId !== "undefined") {
+                    const receiverSocketId = getReseverSocketId(receiverId);
+                    if (receiverSocketId) {
+                        io.to(receiverSocketId).emit("newMessage", newMessage);
                     }
                 }
+                // GROUP MESSAGE
+                if (groupId) {
+                    console.log('📡 Emitting to Socket.IO - newGroupMessage');
+                    io.emit("newGroupMessage", newMessage);
+                }
+
+                /* PUSH NOTIFICATIONS */
+                let notificationTitle = req.user.fullName;
+                if (groupId) {
+                    const group = await Group.findById(groupId);
+                    if (group) {
+                        notificationTitle = `New message from ${group.name}`;
+                    }
+                }
+
+                const notificationPayload = {
+                    notification: {
+                        title: notificationTitle,
+                        body: text || (image ? 'Sent an image' : 'Sent a file')
+                    },
+                    data: {
+                        messageId: newMessage._id.toString(),
+                        senderId: senderId.toString(),
+                        type: groupId ? 'group' : 'chat',
+                        id: groupId ? groupId.toString() : senderId.toString()
+                    }
+                };
+
+                // DIRECT MESSAGE - Send notification if receiver is offline
+                if (receiverId && receiverId !== "undefined") {
+                    const receiverSocketId = getReseverSocketId(receiverId);
+
+                    if (!receiverSocketId) {
+                        const receiver = await User.findById(receiverId);
+                        if (receiver?.fcmTokens && receiver.fcmTokens.length > 0) {
+                            await admin.messaging().sendEachForMulticast({
+                                tokens: receiver.fcmTokens,
+                                ...notificationPayload
+                            });
+                            console.log(`📲 PUSH sent to ${receiver.fullName}`);
+                        }
+                    }
+                }
+                // GROUP MESSAGE - Send notification to offline members only
+                else if (groupId) {
+                    const group = await Group.findById(groupId).populate('members');
+                    if (group) {
+                        const { userSocketMap } = await import('../lib/socket.js');
+                        const onlineUserIds = Object.keys(userSocketMap);
+
+                        const offlineTokens = group.members
+                            .filter(member => {
+                                const memberId = member._id.toString();
+                                const isNotSender = memberId !== senderId.toString();
+                                const isOffline = !onlineUserIds.includes(memberId);
+                                const hasTokens = member.fcmTokens && member.fcmTokens.length > 0;
+                                return isNotSender && isOffline && hasTokens;
+                            })
+                            .flatMap(member => member.fcmTokens);
+
+                        if (offlineTokens.length > 0) {
+                            await admin.messaging().sendEachForMulticast({
+                                tokens: offlineTokens,
+                                ...notificationPayload
+                            });
+                            console.log(`📲 PUSH sent to ${offlineTokens.length} offline group members`);
+                        }
+                    }
+                }
+            } catch (backgroundError) {
+                console.error('Background task error:', backgroundError.message);
             }
-        } catch (err) {
-            console.log('Error in sendMessage:', err.message);
-            res.status(500).json({ err: 'Internal server error' });
-        }
+        })();
 
-
-        /* SOCKET IO EVENTS */
-
-        // DIRECT MESSAGE
-        if (receiverId && receiverId !== "undefined") {
-            const receiverSocketId = getReseverSocketId(receiverId);
-
-            if (receiverSocketId) {
-                io.to(receiverSocketId).emit("newMessage", newMessage);
-            }
-        }
-
-        // GROUP MESSAGE
-        if (groupId) {
-            console.log('📡 Emitting to Socket.IO - newGroupMessage');
-            io.emit("newGroupMessage", newMessage);
-        }
     } catch (err) {
         console.log('Error in sendMessage:', err.message);
-        res.status(500).json({ err: 'Internal server error' });
+        // Only verify headers sent if we haven't sent response yet
+        if (!res.headersSent) {
+            res.status(500).json({ err: 'Internal server error' });
+        }
     }
 }
 

@@ -5,9 +5,13 @@
   "scripts": {
     "build": "npm install --prefix BackEnd && npm install --prefix FrontEnd --include=dev && npm run build --prefix FrontEnd",
     "start": "npm run start --prefix BackEnd",
-    "serve": "npm run build && npm start"
+    "serve": "npm run build && npm start",
+    "dev": "concurrently \"npm run dev --prefix BackEnd\" \"npm run dev --prefix FrontEnd\""
   },
   "author": "",
   "license": "ISC",
-  "description": ""
+  "description": "",
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  }
 }
