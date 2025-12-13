@@ -31,6 +31,21 @@ export const useMessageStore = create(persist((set, get) => ({
         }
     },
 
+    deleteUser: async (userId) => {
+        try {
+            await axiosInstance.delete(`/auth/delete/${userId}`);
+            toast.success("User deleted successfully");
+            // Remove user from local list immediately
+            set({ users: get().users.filter(u => u._id !== userId) });
+            // If the deleted user was selected, deselect them
+            if (get().selectedUser?._id === userId) {
+                set({ selectedUser: null });
+            }
+        } catch (error) {
+            toast.error(error.response?.data?.message || "Failed to delete user");
+        }
+    },
+
 
     getMessage: async (userId) => {
         try {

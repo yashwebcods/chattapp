@@ -1,5 +1,5 @@
 import express from "express"
-import { checkuser, Login, Logout, Signup, updateProfile, updateFcmToken } from "../Controllers/auth.Ctl.js"
+import { checkuser, Login, Logout, Signup, updateProfile, updateFcmToken, deleteUser } from "../Controllers/auth.Ctl.js"
 import { checkRole, proctedRoute } from "../Config/auth.middlawear.js"
 const route = express.Router()
 
@@ -11,6 +11,7 @@ route.get('/logout', Logout)
 route.put('/update-profile', proctedRoute, updateProfile)
 route.put('/update-fcm-token', proctedRoute, updateFcmToken)
 route.get('/check', proctedRoute, checkuser)
+route.delete('/delete/:id', proctedRoute, deleteUser)
 
 
 export default route;

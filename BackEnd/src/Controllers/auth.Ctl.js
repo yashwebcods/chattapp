@@ -143,8 +143,44 @@ export const updateFcmToken = async (req, res) => {
 
         console.log(`✅ FCM Token added for user: ${req.user.fullName}`);
         res.status(200).json({ message: "FCM Token updated successfully" });
-    } catch (error) {
         console.log("Error in updateFcmToken:", error.message);
+        res.status(500).json({ message: "Internal Server Error" });
+    }
+}
+
+export const deleteUser = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const requestingUser = req.user;
+
+        // 1. Check permission
+        if (requestingUser.role !== 'owner') {
+            return res.status(403).json({ message: "Only owners can delete users" });
+        }
+
+        // 2. Prevent self-deletion
+        if (id === requestingUser._id.toString()) {
+            return res.status(400).json({ message: "You cannot delete your own account" });
+        }
+
+        // 3. Delete the user
+        const deletedUser = await User.findByIdAndDelete(id);
+
+        if (!deletedUser) {
+            return res.status(404).json({ message: "User not found" });
+        }
+
+        // 4. Optional: Remove user from all groups they were a member of
+        await Group.updateMany(
+            { members: id },
+            { $pull: { members: id } }
+        );
+
+        console.log(`🗑️ User deleted by owner: ${deletedUser.fullName}`);
+        res.status(200).json({ message: "User deleted successfully" });
+
+    } catch (error) {
+        console.log("Error in deleteUser:", error.message);
         res.status(500).json({ message: "Internal Server Error" });
     }
 }

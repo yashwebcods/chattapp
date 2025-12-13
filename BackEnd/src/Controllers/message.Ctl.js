@@ -166,7 +166,7 @@ export const sendMessage = async (req, res) => {
                         const receiver = await User.findById(receiverId);
                         if (receiver?.fcmTokens && receiver.fcmTokens.length > 0) {
                             await admin.messaging().sendEachForMulticast({
-                                tokens: receiver.fcmTokens,
+                                tokens: [...new Set(receiver.fcmTokens)],
                                 ...notificationPayload
                             });
                             console.log(`📲 PUSH sent to ${receiver.fullName}`);
@@ -190,9 +190,11 @@ export const sendMessage = async (req, res) => {
                             })
                             .flatMap(member => member.fcmTokens);
 
-                        if (offlineTokens.length > 0) {
+                        const uniqueTokens = [...new Set(offlineTokens)];
+
+                        if (uniqueTokens.length > 0) {
                             await admin.messaging().sendEachForMulticast({
-                                tokens: offlineTokens,
+                                tokens: uniqueTokens,
                                 ...notificationPayload
                             });
                             console.log(`📲 PUSH sent to ${offlineTokens.length} offline group members`);
