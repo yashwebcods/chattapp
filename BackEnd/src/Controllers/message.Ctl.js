@@ -115,6 +115,14 @@ export const sendMessage = async (req, res) => {
         await newMessage.save();
         await newMessage.populate("senderId", "fullName image");
 
+        // Populate groupId with seller info for proper group name formatting
+        if (groupId) {
+            await newMessage.populate({
+                path: 'groupId',
+                populate: { path: 'sellerId', select: 'companyName name' }
+            });
+        }
+
         // Send Response to Client IMMEDIATELY
         res.status(201).json(newMessage);
 
@@ -125,10 +133,17 @@ export const sendMessage = async (req, res) => {
                 /* SOCKET IO EVENTS */
                 // DIRECT MESSAGE
                 if (receiverId && receiverId !== "undefined") {
-                    const receiverSocketId = getReseverSocketId(receiverId);
-                    if (receiverSocketId) {
-                        io.to(receiverSocketId).emit("newMessage", newMessage);
-                    }
+                    console.log('📡 Emitting newMessage event');
+                    console.log('  - Receiver ID:', receiverId);
+                    console.log('  - Sender ID:', senderId.toString());
+
+                    // Emit to receiver's room
+                    io.to(receiverId).emit("newMessage", newMessage);
+                    console.log('  ✅ Emitted to receiver room:', receiverId);
+
+                    // Also emit to sender's room so they can see it in real-time
+                    io.to(senderId.toString()).emit("newMessage", newMessage);
+                    console.log('  ✅ Emitted to sender room:', senderId.toString());
                 }
                 // GROUP MESSAGE
                 if (groupId) {

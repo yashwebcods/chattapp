@@ -53,6 +53,17 @@ export const ChatHeader = () => {
   const groupTypers = selectedGroup && groupTypingData[selectedGroup._id];
   const isGroupTyping = groupTypers && groupTypers.length > 0;
 
+  // Debug logging
+  console.log("🎨 ChatHeader State:", {
+    selectedUser: selectedUser?.fullName,
+    selectedGroup: selectedGroup?.name,
+    typingUsers: typingUsers,
+    groupTypingData: groupTypingData,
+    isUserTyping,
+    isGroupTyping,
+    groupTypers
+  });
+
   let statusText;
   if (isUserTyping) {
     statusText = "typing...";

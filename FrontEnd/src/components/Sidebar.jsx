@@ -25,11 +25,12 @@ function Sidebar({ onSelectUser }) {
     }, [getUsers])
 
     useEffect(() => {
-        console.log('DEBUG: unreadCounts:', unreadCounts);
+        console.log('🎨 Sidebar - DEBUG: unreadCounts:', unreadCounts);
         if (users.length > 0) {
-            console.log('DEBUG: Sample User ID:', users[0]._id, 'Type:', typeof users[0]._id);
+            console.log('🎨 Sidebar - DEBUG: Sample User ID:', users[0]._id, 'Type:', typeof users[0]._id);
             const sampleId = users[0]._id;
-            console.log('DEBUG: Count for sample:', unreadCounts[sampleId]);
+            console.log('🎨 Sidebar - DEBUG: Count for sample:', unreadCounts[sampleId]);
+            console.log('🎨 Sidebar - DEBUG: All unreadCount keys:', Object.keys(unreadCounts));
         }
     }, [unreadCounts, users]);
 
