@@ -149,11 +149,18 @@ export const useMessageStore = create(persist((set, get) => ({
     setupMessageListener: (socket) => {
         // Remove existing listener to prevent duplicates
         socket.off("newMessage");
+        console.log("✅ Setting up newMessage listener");
 
         socket.on("newMessage", (newMessage) => {
-            console.log("newMessage event received:", newMessage);
+            console.log("📨 newMessage event received:", newMessage);
             const { selectedUser, message, unreadCounts } = get();
             const authUser = useAuthStore.getState().authUser;
+
+            console.log("📊 Current state:", {
+                selectedUser: selectedUser?.fullName,
+                messageCount: message.length,
+                unreadCounts: unreadCounts
+            });
 
             // Check if this message is relevant to the current chat
             const isFromSelectedUser = selectedUser && (
@@ -167,20 +174,30 @@ export const useMessageStore = create(persist((set, get) => ({
             const isMyMessage = newMessage.senderId === authUser._id ||
                 newMessage.senderId?._id === authUser._id;
 
+            console.log("🔍 Message analysis:", {
+                isFromSelectedUser,
+                isMyMessage,
+                senderId: newMessage.senderId?._id || newMessage.senderId,
+                receiverId: newMessage.receiverId?._id || newMessage.receiverId
+            });
+
             // If this message is from/to the currently selected user, add it to the chat
             if (isFromSelectedUser && !message.some(msg => msg._id === newMessage._id)) {
+                console.log("➕ Adding message to current chat");
                 set({ message: [...message, newMessage] });
             } else if (isMyMessage && selectedUser && (
                 newMessage.receiverId === selectedUser._id ||
                 newMessage.receiverId?._id === selectedUser._id
             ) && !message.some(msg => msg._id === newMessage._id)) {
                 // Add our own sent message to the chat if we're sending to the selected user
+                console.log("➕ Adding own message to current chat");
                 set({ message: [...message, newMessage] });
             } else {
                 // Otherwise, show a notification and increment unread count
                 // Don't show notification for our own messages to other users
                 if (!isMyMessage) {
                     const senderName = newMessage.senderId?.fullName || 'Someone';
+                    console.log("🔔 Showing notification and incrementing unread count for:", senderName);
                     toast.success(`New message from ${senderName}`, { duration: 2000 });
 
                     // Increment unread count for this user
@@ -190,12 +207,21 @@ export const useMessageStore = create(persist((set, get) => ({
                         senderId = senderId.toString();
                     }
 
-                    set({
-                        unreadCounts: {
-                            ...unreadCounts,
-                            [senderId]: (unreadCounts[senderId] || 0) + 1
-                        }
+                    const newUnreadCounts = {
+                        ...unreadCounts,
+                        [senderId]: (unreadCounts[senderId] || 0) + 1
+                    };
+
+                    console.log("📈 Updating unread count:", {
+                        senderId,
+                        oldCount: unreadCounts[senderId] || 0,
+                        newCount: newUnreadCounts[senderId],
+                        allCounts: newUnreadCounts
                     });
+
+                    set({ unreadCounts: newUnreadCounts });
+                } else {
+                    console.log("⏭️ Skipping notification (own message to other user)");
                 }
             }
         });
@@ -216,9 +242,16 @@ export const useMessageStore = create(persist((set, get) => ({
         if (!socket) return;
 
         socket.on("newGroupMessage", (newMessage) => {
-            console.log("newGroupMessage event received:", newMessage);
+            console.log("📨 newGroupMessage event received:", newMessage);
             const { selectedGroup, groups, unreadCounts, message } = get();
             const authUser = useAuthStore.getState().authUser;
+
+            console.log("📊 Current group message state:", {
+                selectedGroup: selectedGroup?.name,
+                groupsCount: groups.length,
+                messageCount: message.length,
+                unreadCounts: unreadCounts
+            });
 
             // If we are currently viewing this group, add message to chat
             const isCurrentGroup = selectedGroup && (
@@ -226,7 +259,16 @@ export const useMessageStore = create(persist((set, get) => ({
                 selectedGroup._id === newMessage.groupId?.toString()
             );
 
+            console.log("🔍 Group message analysis:", {
+                isCurrentGroup,
+                selectedGroupId: selectedGroup?._id,
+                messageGroupId: newMessage.groupId?._id || newMessage.groupId,
+                senderId: newMessage.senderId?._id || newMessage.senderId,
+                authUserId: authUser._id
+            });
+
             if (isCurrentGroup) {
+                console.log("➕ Adding message to current group chat");
                 set({ message: [...message, newMessage] });
             }
 
@@ -234,7 +276,12 @@ export const useMessageStore = create(persist((set, get) => ({
             const isMyMessage = newMessage.senderId === authUser._id ||
                 newMessage.senderId?._id === authUser._id;
 
-            if (isMyMessage || isCurrentGroup) return;
+            console.log("📤 Is my message:", isMyMessage);
+
+            if (isMyMessage || isCurrentGroup) {
+                console.log("⏭️ Skipping notification (own message or current group)");
+                return;
+            }
 
             // Get group name - format it like in GroupsListPage
             let groupName = 'a group';
@@ -252,17 +299,25 @@ export const useMessageStore = create(persist((set, get) => ({
             }
 
             // Show notification with group name (2 second duration)
+            console.log("🔔 Showing group notification:", groupName);
             toast.success(`New message from ${groupName}`, { duration: 2000 });
             console.log(`New message from ${groupName}`);
 
             // Increment unread count for this group
             const gId = newMessage.groupId?._id || newMessage.groupId;
-            set({
-                unreadCounts: {
-                    ...unreadCounts,
-                    [gId]: (unreadCounts[gId] || 0) + 1
-                }
+            const newUnreadCounts = {
+                ...unreadCounts,
+                [gId]: (unreadCounts[gId] || 0) + 1
+            };
+
+            console.log("📈 Updating group unread count:", {
+                groupId: gId,
+                oldCount: unreadCounts[gId] || 0,
+                newCount: newUnreadCounts[gId],
+                allCounts: newUnreadCounts
             });
+
+            set({ unreadCounts: newUnreadCounts });
         });
 
         // Listen for group updates (member add/remove)
@@ -429,26 +484,41 @@ export const useMessageStore = create(persist((set, get) => ({
 
     subscribeToTypingEvents: () => {
         const socket = useAuthStore.getState().socket;
-        if (!socket) return;
+        if (!socket) {
+            console.log("⚠️ subscribeToTypingEvents: No socket available");
+            return;
+        }
+
+        console.log("✅ Subscribing to typing events...");
 
         socket.on("typing", ({ senderId }) => {
+            console.log("🔵 TYPING event received from:", senderId);
             const { typingUsers } = get();
+            console.log("Current typing users:", typingUsers);
             if (!typingUsers.includes(senderId)) {
                 set({ typingUsers: [...typingUsers, senderId] });
+                console.log("✅ Added user to typing list:", senderId);
             }
         });
 
         socket.on("stopTyping", ({ senderId }) => {
+            console.log("🔴 STOP_TYPING event received from:", senderId);
             const { typingUsers } = get();
             set({ typingUsers: typingUsers.filter(id => id !== senderId) });
+            console.log("✅ Removed user from typing list:", senderId);
         });
 
         socket.on("groupTyping", ({ groupId, userId, userName }) => {
+            console.log("🔵 GROUP_TYPING event received:", { groupId, userId, userName });
             const { groupTypingData } = get();
             const authUser = useAuthStore.getState().authUser;
-            if (userId === authUser._id) return; // Don't show self typing
+            if (userId === authUser._id) {
+                console.log("⏭️ Skipping self typing event");
+                return; // Don't show self typing
+            }
 
             const currentTypers = groupTypingData[groupId] || [];
+            console.log("Current typers in group:", currentTypers);
             if (!currentTypers.includes(userName)) {
                 set({
                     groupTypingData: {
@@ -456,10 +526,12 @@ export const useMessageStore = create(persist((set, get) => ({
                         [groupId]: [...currentTypers, userName]
                     }
                 });
+                console.log("✅ Added user to group typing list:", userName);
             }
         });
 
         socket.on("groupStopTyping", ({ groupId, userId, userName }) => {
+            console.log("🔴 GROUP_STOP_TYPING event received:", { groupId, userId, userName });
             const { groupTypingData } = get();
             const currentTypers = groupTypingData[groupId] || [];
             set({
@@ -468,6 +540,7 @@ export const useMessageStore = create(persist((set, get) => ({
                     [groupId]: currentTypers.filter(name => name !== userName)
                 }
             });
+            console.log("✅ Removed user from group typing list:", userName);
         });
     },
 
@@ -483,22 +556,42 @@ export const useMessageStore = create(persist((set, get) => ({
 
     sendTyping: (receiverId) => {
         const socket = useAuthStore.getState().socket;
-        if (socket) socket.emit("typing", { toUserId: receiverId });
+        if (socket) {
+            console.log("🔵 Emitting TYPING event to:", receiverId);
+            socket.emit("typing", { toUserId: receiverId });
+        } else {
+            console.log("⚠️ Cannot emit TYPING: No socket connection");
+        }
     },
 
     sendStopTyping: (receiverId) => {
         const socket = useAuthStore.getState().socket;
-        if (socket) socket.emit("stopTyping", { toUserId: receiverId });
+        if (socket) {
+            console.log("🔴 Emitting STOP_TYPING event to:", receiverId);
+            socket.emit("stopTyping", { toUserId: receiverId });
+        } else {
+            console.log("⚠️ Cannot emit STOP_TYPING: No socket connection");
+        }
     },
 
     sendGroupTyping: (groupId, userName) => {
         const socket = useAuthStore.getState().socket;
-        if (socket) socket.emit("groupTyping", { groupId, userName });
+        if (socket) {
+            console.log("🔵 Emitting GROUP_TYPING event:", { groupId, userName });
+            socket.emit("groupTyping", { groupId, userName });
+        } else {
+            console.log("⚠️ Cannot emit GROUP_TYPING: No socket connection");
+        }
     },
 
     sendGroupStopTyping: (groupId, userName) => {
         const socket = useAuthStore.getState().socket;
-        if (socket) socket.emit("groupStopTyping", { groupId, userName });
+        if (socket) {
+            console.log("🔴 Emitting GROUP_STOP_TYPING event:", { groupId, userName });
+            socket.emit("groupStopTyping", { groupId, userName });
+        } else {
+            console.log("⚠️ Cannot emit GROUP_STOP_TYPING: No socket connection");
+        }
     },
 
 }), {
