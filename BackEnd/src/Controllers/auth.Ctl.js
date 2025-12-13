@@ -143,6 +143,7 @@ export const updateFcmToken = async (req, res) => {
 
         console.log(`✅ FCM Token added for user: ${req.user.fullName}`);
         res.status(200).json({ message: "FCM Token updated successfully" });
+    } catch (error) {
         console.log("Error in updateFcmToken:", error.message);
         res.status(500).json({ message: "Internal Server Error" });
     }
