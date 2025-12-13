@@ -251,10 +251,11 @@ export const useMessageStore = create(persist((set, get) => ({
             console.log(`New message from ${groupName}`);
 
             // Increment unread count for this group
+            const gId = newMessage.groupId?._id || newMessage.groupId;
             set({
                 unreadCounts: {
                     ...unreadCounts,
-                    [newMessage.groupId]: (unreadCounts[newMessage.groupId] || 0) + 1
+                    [gId]: (unreadCounts[gId] || 0) + 1
                 }
             });
         });

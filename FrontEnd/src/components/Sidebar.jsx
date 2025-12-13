@@ -6,21 +6,32 @@ import { useAuthStore } from '../store/useAuthStore'
 import { useNavigate } from 'react-router-dom'
 
 function Sidebar({ onSelectUser }) {
-    const { getUsers, users, selectedUser, isUsersLoading, setSelectedUser, setGroup, unreadCounts, deleteUser } = useMessageStore()
+    const { getUsers, users, groups, selectedUser, isUsersLoading, setSelectedUser, setGroup, unreadCounts, deleteUser } = useMessageStore()
     const { onlineUsers, authUser } = useAuthStore()
     const navigate = useNavigate()
 
     const [isGroup, setIsGroup] = useState(false)
     const [searchTerm, setSearchTerm] = useState('')
+    const [showOnlineOnly, setShowOnlineOnly] = useState(false)
 
-    // Filter users based on search term
+    // Filter users based on search term and online status
     const filteredUsers = users.filter(user =>
-        user.fullName.toLowerCase().includes(searchTerm.toLowerCase())
+        user.fullName.toLowerCase().includes(searchTerm.toLowerCase()) &&
+        (!showOnlineOnly || onlineUsers.includes(user._id))
     )
 
     useEffect(() => {
         getUsers()
     }, [getUsers])
+
+    useEffect(() => {
+        console.log('DEBUG: unreadCounts:', unreadCounts);
+        if (users.length > 0) {
+            console.log('DEBUG: Sample User ID:', users[0]._id, 'Type:', typeof users[0]._id);
+            const sampleId = users[0]._id;
+            console.log('DEBUG: Count for sample:', unreadCounts[sampleId]);
+        }
+    }, [unreadCounts, users]);
 
     if (isUsersLoading) return <SidebarSkeleton />
 
@@ -35,8 +46,15 @@ function Sidebar({ onSelectUser }) {
                     {/* change popover-1 and --anchor-1 names. Use unique names for each dropdown */}
                     {/* For TSX uncomment the commented types below */}
                     <div className="dropdown dropdown-end">
-                        <button tabIndex={0} role="button" className="btn">
+                        <button tabIndex={0} role="button" className="btn relative">
                             <Users />
+                            {/* Show warning badge if any group has unread messages */}
+                            {groups.reduce((acc, g) => acc + (unreadCounts[g._id] || 0), 0) > 0 && (
+                                <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                                    <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+                                </span>
+                            )}
                         </button>
                         <ul tabIndex={0} className="dropdown-content menu bg-base-100 rounded-box z-[1] w-52 p-2 shadow">
                             <li>
@@ -55,18 +73,38 @@ function Sidebar({ onSelectUser }) {
                                     onClick={() => {
                                         navigate('/groups')
                                     }}
-                                    className="btn btn-ghost w-full justify-start"
+                                    className="btn btn-ghost w-full justify-start justify-between"
                                 >
                                     View Groups
+                                    {groups.reduce((acc, g) => acc + (unreadCounts[g._id] || 0), 0) > 0 && (
+                                        <span className="badge badge-sm badge-error text-white">
+                                            {groups.reduce((acc, g) => acc + (unreadCounts[g._id] || 0), 0)}
+                                        </span>
+                                    )}
                                 </button>
                             </li>
                         </ul>
                     </div>
                 </div>
+                {/* Online Filter Toggle */}
+                <div className="mt-3 hidden sm:flex items-center gap-2">
+                    <label className="cursor-pointer label gap-2 p-0">
+                        <input
+                            type="checkbox"
+                            checked={showOnlineOnly}
+                            onChange={(e) => setShowOnlineOnly(e.target.checked)}
+                            className="checkbox checkbox-xs checkbox-primary"
+                        />
+                        <span className="label-text text-sm">Show Online Only</span>
+                    </label>
+                    <span className="text-xs text-zinc-500 ml-auto">
+                        ({onlineUsers.length - 1 > 0 ? onlineUsers.length - 1 : 0} online)
+                    </span>
+                </div>
             </div>
 
             {/* Search Bar */}
-            <div className='px-3 pb-3'>
+            <div className='px-3 pb-3 pt-3 sm:pt-0'>
                 <div className='input input-bordered flex items-center gap-2 input-sm w-full'>
                     <Search className='size-4 text-base-content/40' />
                     <input
@@ -123,9 +161,9 @@ function Sidebar({ onSelectUser }) {
                             </div>
 
                             {/* Unread Count */}
-                            {unreadCounts[v._id] > 0 && (
-                                <div className='block lg:flex bg-primary text-primary-content rounded-full min-w-[20px] sm:min-w-[24px] h-5 sm:h-6 px-1 sm:px-2 items-center justify-center text-xs font-bold'>
-                                    {unreadCounts[v._id]}
+                            {(unreadCounts[v._id] > 0 || unreadCounts[String(v._id)] > 0) && (
+                                <div className='ml-auto bg-primary text-primary-content rounded-full min-w-[20px] h-5 px-1 flex items-center justify-center text-xs font-bold shadow-md'>
+                                    {unreadCounts[v._id] || unreadCounts[String(v._id)]}
                                 </div>
                             )}
 
@@ -138,7 +176,7 @@ function Sidebar({ onSelectUser }) {
                                             deleteUser(v._id);
                                         }
                                     }}
-                                    className='absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-base-100 rounded-full shadow-sm hover:bg-error hover:text-white transition-all opacity-0 group-hover:opacity-100 z-10 hidden sm:block'
+                                    className='p-2 bg-base-100 rounded-full shadow-sm hover:bg-error hover:text-white transition-all opacity-0 group-hover:opacity-100 z-10 hidden sm:block ml-2'
                                     title="Delete User"
                                 >
                                     <Trash2 className="size-4" />
