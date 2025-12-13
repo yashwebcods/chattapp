@@ -22,7 +22,7 @@ import { useMessageStore } from "./store/useMessageStore";
 
 function App() {
   const { authUser, checkAuth, isCheckingAuth, socket } = useAuthStore();
-  const { subscribeToGroupMessages, unsubscribeFromGroupMessages, subcribeToMessages, unsubcribeToMessage, subscribeToTypingEvents, unsubscribeFromTypingEvents } = useMessageStore();
+  const { subscribeToGroupMessages, unsubscribeFromGroupMessages, subcribeToMessages, unsubcribeToMessage, subscribeToTypingEvents, unsubscribeFromTypingEvents, subscribeToClearChatEvents } = useMessageStore();
   const { theme } = useThemeStore();
 
   useEffect(() => {
@@ -63,6 +63,7 @@ function App() {
       subscribeToGroupMessages();
       subcribeToMessages();
       subscribeToTypingEvents();
+      subscribeToClearChatEvents(); // Subscribe to chat cleared events
     }
     return () => {
       if (socket) {
@@ -71,7 +72,7 @@ function App() {
         unsubscribeFromTypingEvents();
       }
     };
-  }, [authUser, socket, subscribeToGroupMessages, unsubscribeFromGroupMessages, subcribeToMessages, unsubcribeToMessage, subscribeToTypingEvents, unsubscribeFromTypingEvents]);
+  }, [authUser, socket, subscribeToGroupMessages, unsubscribeFromGroupMessages, subcribeToMessages, unsubcribeToMessage, subscribeToTypingEvents, unsubscribeFromTypingEvents, subscribeToClearChatEvents]);
 
   if (isCheckingAuth && !authUser) {
     return (

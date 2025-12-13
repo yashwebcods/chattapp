@@ -367,11 +367,14 @@ export const clearChat = async (req, res) => {
 
         await systemMessage.save();
 
-        // Emit system message to receiver
-        const receiverSocketId = getReseverSocketId(userToChatId);
-        if (receiverSocketId) {
-            io.to(receiverSocketId).emit("newMessage", systemMessage);
-        }
+        // Emit system message to receiver using room (not socket ID)
+        io.to(userToChatId).emit("newMessage", systemMessage);
+        console.log("✅ System message emitted to receiver:", userToChatId);
+
+        // Also emit a clearChat event to both users for UI update
+        io.to(userToChatId).emit("chatCleared", { clearedBy: myId.toString(), userId: userToChatId });
+        io.to(myId.toString()).emit("chatCleared", { clearedBy: myId.toString(), userId: userToChatId });
+        console.log("✅ clearChat event emitted to both users");
 
         res.status(200).json({ message: "Chat cleared successfully" });
     } catch (error) {

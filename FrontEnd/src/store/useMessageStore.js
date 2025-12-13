@@ -225,8 +225,27 @@ export const useMessageStore = create(persist((set, get) => ({
         if (socket) {
             socket.off("newMessage");
             socket.off("connect");
-            console.log("Unsubscribed from newMessage events");
+            socket.off("chatCleared");
+            console.log("Unsubscribed from newMessage and chatCleared events");
         }
+    },
+
+    // Listen for chat cleared event
+    subscribeToClearChatEvents: () => {
+        const socket = useAuthStore.getState().socket;
+        if (!socket) return;
+
+        socket.on("chatCleared", ({ clearedBy, userId }) => {
+            console.log("🗑️ Chat cleared event received:", { clearedBy, userId });
+            const authUser = useAuthStore.getState().authUser;
+            const { selectedUser } = get();
+
+            // If we're viewing this chat, clear the messages
+            if (selectedUser && selectedUser._id === userId) {
+                console.log("✅ Clearing chat UI for:", userId);
+                set({ message: [] });
+            }
+        });
     },
 
     subscribeToGroupMessages: () => {
@@ -457,6 +476,10 @@ export const useMessageStore = create(persist((set, get) => ({
             await axiosInstance.delete(`/message/clear/${userId}`);
             set({ message: [] });
             toast.success("Chat cleared");
+
+            // The backend sends a system message to the other user via socket
+            // The setupMessageListener will receive it and update their UI
+            console.log("✅ Chat cleared for user:", userId);
         } catch (error) {
             toast.error(error.response?.data?.message || "Failed to clear chat");
         }
