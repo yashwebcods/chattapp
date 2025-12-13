@@ -1,6 +1,6 @@
 import express from 'express';
 import dotenv from 'dotenv';
-import db from './Config/mongoose.js';
+import connectDB from './Config/mongoose.js';
 import cookieParser from 'cookie-parser';
 import cors from "cors"
 import path from 'path'
@@ -11,7 +11,9 @@ import sellerRoute from './Routes/seller.route.js'
 import groupRoute from './Routes/group.route.js'
 import { app, server } from './lib/socket.js';
 dotenv.config();
-const port = 8001;
+
+connectDB();
+const port = process.env.PORT || 8001;
 const __dirname = path.resolve()
 
 app.use(cookieParser());
