@@ -4,18 +4,20 @@ import { useAuthStore } from '../store/useAuthStore'
 import { X, MoreVertical, Trash2, CheckSquare, ArrowLeft } from 'lucide-react'
 
 export const ChatHeader = () => {
-  const {
-    selectedUser,
-    selectedGroup,
-    setSelectedUser,
-    setSelectedGroup,
-    clearChat,
-    clearGroupChat,
-    setSelectionMode,
-    isSelectionMode,
-    typingUsers,
-    groupTypingData
-  } = useMessageStore()
+  // Use selector to ensure re-renders when typing state changes
+  const selectedUser = useMessageStore((state) => state.selectedUser)
+  const selectedGroup = useMessageStore((state) => state.selectedGroup)
+  const setSelectedUser = useMessageStore((state) => state.setSelectedUser)
+  const setSelectedGroup = useMessageStore((state) => state.setSelectedGroup)
+  const clearChat = useMessageStore((state) => state.clearChat)
+  const clearGroupChat = useMessageStore((state) => state.clearGroupChat)
+  const setSelectionMode = useMessageStore((state) => state.setSelectionMode)
+  const isSelectionMode = useMessageStore((state) => state.isSelectionMode)
+
+  // CRITICAL: Use individual selectors for typing state to ensure re-renders
+  const typingUsers = useMessageStore((state) => state.typingUsers)
+  const groupTypingData = useMessageStore((state) => state.groupTypingData)
+
   const { onlineUsers } = useAuthStore()
 
   const handleClearChat = async () => {
