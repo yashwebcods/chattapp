@@ -29,31 +29,40 @@ function App() {
     checkAuth();
   }, [checkAuth]);
 
+  // FCM Setup - runs only once when user is authenticated
+  useEffect(() => {
+    if (!authUser) return;
+
+    // Request Notification Permission (only once)
+    requestPermission().then(token => {
+      if (token) {
+        useAuthStore.getState().saveFcmToken(token);
+      }
+    });
+
+    // Handle Foreground Messages
+    const unsubscribeForeground = onMessage(messaging, (payload) => {
+      console.log('Message received. ', payload);
+      toast((t) => (
+        <div onClick={() => toast.dismiss(t.id)}>
+          <p className="font-bold">{payload.notification.title}</p>
+          <p>{payload.notification.body}</p>
+        </div>
+      ), { duration: 4000, position: 'top-right' });
+    });
+
+    // Cleanup foreground listener
+    return () => {
+      if (unsubscribeForeground) unsubscribeForeground();
+    };
+  }, [authUser]); // Only depends on authUser, not socket
+
+  // Socket Subscriptions - manages message and typing listeners
   useEffect(() => {
     if (authUser && socket) {
       subscribeToGroupMessages();
       subcribeToMessages();
       subscribeToTypingEvents();
-
-      // Request Notification Permission
-      requestPermission().then(token => {
-        if (token) {
-          useAuthStore.getState().saveFcmToken(token);
-        }
-      });
-
-      // Handle Foreground Messages
-      onMessage(messaging, (payload) => {
-        console.log('Message received. ', payload);
-        // Customize how you want to show the notification in foreground
-        // Using toast for now
-        toast((t) => (
-          <div onClick={() => toast.dismiss(t.id)}>
-            <p className="font-bold">{payload.notification.title}</p>
-            <p>{payload.notification.body}</p>
-          </div>
-        ), { duration: 4000, position: 'top-right' });
-      });
     }
     return () => {
       if (socket) {
