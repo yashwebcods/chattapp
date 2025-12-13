@@ -64,6 +64,15 @@ export const ChatHeader = () => {
     groupTypers
   });
 
+  // Monitor typing state changes
+  React.useEffect(() => {
+    console.log("🔄 ChatHeader Re-rendered! Typing state:", {
+      typingUsers,
+      isUserTyping,
+      selectedUserId: selectedUser?._id
+    });
+  }, [typingUsers, isUserTyping, selectedUser]);
+
   let statusText;
   if (isUserTyping) {
     statusText = "typing...";
