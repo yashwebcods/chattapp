@@ -149,53 +149,61 @@ export const getGroups = async (req, res) => {
 };
 
 
-// Add member to a group
+// Import io
+import { io } from "../lib/socket.js";
+
 export const addMemberToGroup = async (req, res) => {
     try {
         const { groupId } = req.params;
         const { userId } = req.body;
-        const currentUserId = req.user._id; // Get the user making the request
+        const currentUserId = req.user._id;
 
         if (!userId) {
             return res.status(400).json({ message: "User ID is required" });
         }
 
-        // Get the current user's role
         const currentUser = await User.findById(currentUserId);
         if (!currentUser) {
             return res.status(404).json({ message: "Current user not found" });
         }
 
-        // Check if current user is owner or manager
         if (currentUser.role !== 'owner' && currentUser.role !== 'manager') {
             return res.status(403).json({
                 message: "Only owners and managers can add members to a group"
             });
         }
 
-        // Check if group exists
         const group = await Group.findById(groupId);
         if (!group) {
             return res.status(404).json({ message: "Group not found" });
         }
 
-        // Check if user exists
         const user = await User.findById(userId);
         if (!user) {
             return res.status(404).json({ message: "User not found" });
         }
 
-        // Check if user is already a member
         if (group.members.includes(userId)) {
             return res.status(400).json({ message: "User is already a member of this group" });
         }
 
-        // Add user to members
         group.members.push(userId);
         await group.save();
-
-        // Populate and return updated group
         await group.populate('members', 'fullName email role image');
+
+        // 1. Create System Message
+        const systemMessage = new Message({
+            groupId: group._id,
+            senderId: currentUserId,
+            text: `${currentUser.fullName} added ${user.fullName} to the group`,
+            messageType: 'system',
+            isSystemMessage: true
+        });
+        await systemMessage.save();
+
+        // 2. Emit Real-time Events
+        io.emit("newGroupMessage", systemMessage);
+        io.emit("groupUpdate", group);
 
         res.status(200).json({
             message: "Member added successfully",
@@ -207,60 +215,64 @@ export const addMemberToGroup = async (req, res) => {
     }
 };
 
-// Remove member from a group
 export const removeMemberFromGroup = async (req, res) => {
     try {
         const { groupId } = req.params;
         const { userId } = req.body;
-        const currentUserId = req.user._id; // Get the user making the request
+        const currentUserId = req.user._id;
 
         if (!userId) {
             return res.status(400).json({ message: "User ID is required" });
         }
 
-        // Get the current user's role
         const currentUser = await User.findById(currentUserId);
         if (!currentUser) {
             return res.status(404).json({ message: "Current user not found" });
         }
 
-        // Check if current user is owner or manager
         if (currentUser.role !== 'owner' && currentUser.role !== 'manager') {
             return res.status(403).json({
                 message: "Only owners and managers can remove members from a group"
             });
         }
 
-        // Check if group exists
         const group = await Group.findById(groupId);
         if (!group) {
             return res.status(404).json({ message: "Group not found" });
         }
 
-        // Check if user exists
         const user = await User.findById(userId);
         if (!user) {
             return res.status(404).json({ message: "User not found" });
         }
 
-        // Prevent removing owners and managers (they are group admins)
         if (user.role === 'owner' || user.role === 'manager') {
             return res.status(400).json({
                 message: "Cannot remove owners or managers from the group. They are group admins."
             });
         }
 
-        // Check if user is a member
         if (!group.members.includes(userId)) {
             return res.status(400).json({ message: "User is not a member of this group" });
         }
 
-        // Remove user from members
         group.members = group.members.filter(memberId => !memberId.equals(userId));
         await group.save();
-
-        // Populate and return updated group
         await group.populate('members', 'fullName email role image');
+
+        // 1. Create System Message
+        const systemMessage = new Message({
+            groupId: group._id,
+            senderId: currentUserId,
+            text: `${currentUser.fullName} removed ${user.fullName} from the group`,
+            messageType: 'system',
+            isSystemMessage: true
+        });
+        await systemMessage.save();
+
+        // 2. Emit Real-time Events
+        io.emit("newGroupMessage", systemMessage);
+        io.emit("groupUpdate", group);
 
         res.status(200).json({
             message: "Member removed successfully",
