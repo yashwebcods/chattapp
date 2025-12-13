@@ -226,7 +226,8 @@ export const useMessageStore = create(persist((set, get) => ({
             socket.off("newMessage");
             socket.off("connect");
             socket.off("chatCleared");
-            console.log("Unsubscribed from newMessage and chatCleared events");
+            socket.off("messagesDeleted");
+            console.log("Unsubscribed from message events");
         }
     },
 
@@ -454,18 +455,29 @@ export const useMessageStore = create(persist((set, get) => ({
         try {
             await axiosInstance.post('/message/delete', { messageIds });
 
-            // Refresh messages to get updated data with deleted status
-            const { selectedUser, getMessage } = get();
-            if (selectedUser) {
-                await getMessage(selectedUser._id);
-            }
+            // Update local state instead of refetching from server
+            const { message } = get();
+            const updatedMessages = message.map(msg => {
+                if (messageIds.includes(msg._id)) {
+                    return {
+                        ...msg,
+                        isDeleted: true,
+                        text: 'This message was deleted',
+                        image: null,
+                        fileUrl: null
+                    };
+                }
+                return msg;
+            });
 
             set({
+                message: updatedMessages,
                 isSelectionMode: false,
                 selectedMessageIds: []
             });
 
             toast.success("Messages deleted");
+            console.log("✅ Messages deleted locally, no page reload");
         } catch (error) {
             toast.error(error.response?.data?.message || "Failed to delete messages");
         }
