@@ -24,7 +24,7 @@ function HomePage() {
 
   return (
     <>
-      <div className='mt-16 p-3 h-screen bg-base-200'>
+      <div className='mt-16 p-3 h-[calc(100vh-3rem)] bg-base-200'>
         <div className='flex items-center justify-center pi-20 px-4'>
           <div className='bg-base-100 rounded-lg shadow-xl w-full max-w-6xl h-[calc(100vh-8rem)]'>
             <div className='flex h-full rounded-lg overflow-hidden'>
@@ -34,18 +34,6 @@ function HomePage() {
                   <Sidebar onSelectUser={handleSelectUser} />
                 ) : (
                   <div className='w-full flex flex-col'>
-                    {/* Mobile chat header with back button */}
-                    <div className='flex items-center gap-2 p-3 border-b border-base-300 bg-base-100'>
-                      <button
-                        onClick={handleBackToSidebar}
-                        className='btn btn-ghost btn-circle btn-sm'
-                      >
-                        <ArrowLeft className='size-4' />
-                      </button>
-                      <span className='font-medium text-sm truncate'>
-                        {selectedUser?.fullName || selectedGroup?.name || 'Chat'}
-                      </span>
-                    </div>
                     <div className='flex-1 overflow-hidden'>
                       {isOn ? (
                         <GroupPage />
@@ -59,35 +47,22 @@ function HomePage() {
                 )}
               </div>
 
-              {/* Desktop: Show sidebar when no chat, chat when selected */}
+              {/* Desktop: Show sidebar and welcome/chat */}
               <div className='hidden lg:flex h-full w-full'>
-                {!selectedUser && !selectedGroup && !isOn ? (
-                  <Sidebar onSelectUser={handleSelectUser} />
-                ) : (
-                  <div className='w-full flex flex-col'>
-                    {/* Desktop chat header with back button */}
-                    <div className='flex items-center gap-2 p-3 border-b border-base-300 bg-base-100'>
-                      <button
-                        onClick={handleBackToSidebar}
-                        className='btn btn-ghost btn-circle btn-sm'
-                      >
-                        <ArrowLeft className='size-4' />
-                      </button>
-                      <span className='font-medium truncate'>
-                        {selectedUser?.fullName || selectedGroup?.name || 'Chat'}
-                      </span>
-                    </div>
-                    <div className='flex-1 overflow-hidden'>
-                      {isOn ? (
-                        <GroupPage />
-                      ) : selectedUser ? (
-                        <Chat />
-                      ) : selectedGroup ? (
-                        <Chat />
-                      ) : null}
-                    </div>
+                <Sidebar onSelectUser={handleSelectUser} />
+                <div className='flex-1 flex flex-col'>
+                  <div className='flex-1 overflow-hidden'>
+                    {!selectedUser && !selectedGroup && !isOn ? (
+                      <NoChatSelected />
+                    ) : isOn ? (
+                      <GroupPage />
+                    ) : selectedUser ? (
+                      <Chat />
+                    ) : selectedGroup ? (
+                      <Chat />
+                    ) : null}
                   </div>
-                )}
+                </div>
               </div>
             </div>
           </div>

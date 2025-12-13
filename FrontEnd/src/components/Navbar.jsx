@@ -1,22 +1,36 @@
 import { LogOut, MessageSquare, Settings, User } from 'lucide-react';
 import React from 'react';
 import { useAuthStore } from '../store/useAuthStore';
-import { Link } from 'react-router-dom';
+import { useMessageStore } from '../store/useMessageStore';
+import { Link, useNavigate } from 'react-router-dom';
 
 function Navbar() {
   const { logout, authUser } = useAuthStore();
+  const { setSelectedUser, setSelectedGroup } = useMessageStore();
+  const navigate = useNavigate();
+
+  const handleChattyClick = () => {
+    // Clear selected chat
+    setSelectedUser(null);
+    setSelectedGroup(null);
+    // Navigate to home
+    navigate('/');
+  };
 
   return (
     <header className="bg-base-100 border-b border-base-300 fixed w-full top-0 z-40 backdrop-blur-lg">
       <div className="container mx-auto px-2 sm:px-4 h-16">
         <div className="flex items-center justify-between h-full">
           <div className="flex items-center gap-4 sm:gap-8">
-            <Link to="/" className="flex items-center">
+            <button 
+              onClick={handleChattyClick}
+              className="flex items-center btn btn-ghost hover:bg-transparent p-0"
+            >
               <div className="p-1.5 sm:p-2 bg-primary/10 rounded-lg mx-1 sm:mx-2">
                 <MessageSquare className="size-4 sm:size-5 text-primary" />
               </div>
               <h1 className="text-primary font-bold text-sm sm:text-base">Chatty</h1>
-            </Link>
+            </button>
           </div>
 
           <div className="flex items-center gap-1 sm:gap-2 md:gap-4">

@@ -5,26 +5,34 @@ import toast from 'react-hot-toast'
 
 export const MessageInput = () => {
   const [text, setText] = useState("")
-  const [imagePreview, setImagePriview] = useState(null)
+  const [imagePreview, setImagePreview] = useState(null)
   const fileInput = useRef(null)
   const { sendMessages } = useMessageStore()
 
   const handleSendMessage = async (e) => {
     e.preventDefault()
     if (!text.trim() && !imagePreview) return
+    
+    // Store current values and clear input immediately
+    const messageText = text.trim()
+    const messageImage = imagePreview
+    
+    setText('')
+    setImagePreview(null)
+    if (fileInput.current) fileInput.current.value = ''
+    
     try {
-      const res = await sendMessages({
-        text: text.trim(),
-        image: imagePreview,
+      console.log('Sending message:', messageText, messageImage ? 'with image' : 'text only')
+      await sendMessages({
+        text: messageText,
+        image: messageImage,
       })
-
-      if (res) {
-        setText('')
-        setImagePriview(null)
-        if (fileInput.current) fileInput.current.value = ''
-      }
+      console.log('Message sent successfully')
     } catch (error) {
-      console.error('field to send message', error)
+      console.error('Failed to send message:', error)
+      // Restore input values on error
+      setText(messageText)
+      setImagePreview(messageImage)
     }
   }
   const handleImage = (e) => {
@@ -35,12 +43,12 @@ export const MessageInput = () => {
     }
     const reader = new FileReader()
     reader.onload = () => {
-      setImagePriview(reader.result)
+      setImagePreview(reader.result)
     }
     reader.readAsDataURL(file)
   }
   const removeImage = () => {
-    setImagePriview(null)
+    setImagePreview(null)
     if (fileInput.current) fileInput.current.value = ''
   }
   return (
