@@ -158,71 +158,64 @@ export const useMessageStore = create(persist((set, get) => ({
 
             console.log("📊 Current state:", {
                 selectedUser: selectedUser?.fullName,
+                selectedUserId: selectedUser?._id,
                 messageCount: message.length,
                 unreadCounts: unreadCounts
             });
 
-            // Check if this message is relevant to the current chat
-            const isFromSelectedUser = selectedUser && (
-                newMessage.senderId === selectedUser._id ||
-                newMessage.senderId?._id === selectedUser._id ||
-                newMessage.receiverId === selectedUser._id ||
-                newMessage.receiverId?._id === selectedUser._id
-            );
-
-            // Check if this is my own message
+            // Check if this is my own message (skip it, already shown via optimistic UI)
             const isMyMessage = newMessage.senderId === authUser._id ||
                 newMessage.senderId?._id === authUser._id;
 
             console.log("🔍 Message analysis:", {
-                isFromSelectedUser,
                 isMyMessage,
                 senderId: newMessage.senderId?._id || newMessage.senderId,
-                receiverId: newMessage.receiverId?._id || newMessage.receiverId
+                receiverId: newMessage.receiverId?._id || newMessage.receiverId,
+                authUserId: authUser._id
             });
 
-            // If this message is from/to the currently selected user, add it to the chat
+            // If this is my own message, skip it (already shown via optimistic update)
+            if (isMyMessage) {
+                console.log("⏭️ Skipping own message (already shown via optimistic UI)");
+                return;
+            }
+
+            // Check if this message is from the currently selected user
+            const isFromSelectedUser = selectedUser && (
+                newMessage.senderId === selectedUser._id ||
+                newMessage.senderId?._id === selectedUser._id
+            );
+
+            // If viewing this chat, add message to current conversation
             if (isFromSelectedUser && !message.some(msg => msg._id === newMessage._id)) {
-                console.log("➕ Adding message to current chat");
-                set({ message: [...message, newMessage] });
-            } else if (isMyMessage && selectedUser && (
-                newMessage.receiverId === selectedUser._id ||
-                newMessage.receiverId?._id === selectedUser._id
-            ) && !message.some(msg => msg._id === newMessage._id)) {
-                // Add our own sent message to the chat if we're sending to the selected user
-                console.log("➕ Adding own message to current chat");
+                console.log("➕ Adding message to current chat (from selected user)");
                 set({ message: [...message, newMessage] });
             } else {
-                // Otherwise, show a notification and increment unread count
-                // Don't show notification for our own messages to other users
-                if (!isMyMessage) {
-                    const senderName = newMessage.senderId?.fullName || 'Someone';
-                    console.log("🔔 Showing notification and incrementing unread count for:", senderName);
-                    toast.success(`New message from ${senderName}`, { duration: 2000 });
+                // Not viewing this chat - show notification and increment unread count
+                const senderName = newMessage.senderId?.fullName || 'Someone';
+                console.log("🔔 Showing notification and incrementing unread count for:", senderName);
+                toast.success(`New message from ${senderName}`, { duration: 2000 });
 
-                    // Increment unread count for this user
-                    let senderId = newMessage.senderId._id || newMessage.senderId;
-                    // Ensure senderId is a string to match Sidebar keys
-                    if (senderId && typeof senderId !== 'string') {
-                        senderId = senderId.toString();
-                    }
-
-                    const newUnreadCounts = {
-                        ...unreadCounts,
-                        [senderId]: (unreadCounts[senderId] || 0) + 1
-                    };
-
-                    console.log("📈 Updating unread count:", {
-                        senderId,
-                        oldCount: unreadCounts[senderId] || 0,
-                        newCount: newUnreadCounts[senderId],
-                        allCounts: newUnreadCounts
-                    });
-
-                    set({ unreadCounts: newUnreadCounts });
-                } else {
-                    console.log("⏭️ Skipping notification (own message to other user)");
+                // Increment unread count for this user
+                let senderId = newMessage.senderId._id || newMessage.senderId;
+                // Ensure senderId is a string to match Sidebar keys
+                if (senderId && typeof senderId !== 'string') {
+                    senderId = senderId.toString();
                 }
+
+                const newUnreadCounts = {
+                    ...unreadCounts,
+                    [senderId]: (unreadCounts[senderId] || 0) + 1
+                };
+
+                console.log("📈 Updating unread count:", {
+                    senderId,
+                    oldCount: unreadCounts[senderId] || 0,
+                    newCount: newUnreadCounts[senderId],
+                    allCounts: newUnreadCounts
+                });
+
+                set({ unreadCounts: newUnreadCounts });
             }
         });
     },

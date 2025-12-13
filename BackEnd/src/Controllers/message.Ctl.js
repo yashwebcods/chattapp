@@ -137,17 +137,15 @@ export const sendMessage = async (req, res) => {
                     console.log('  - Receiver ID:', receiverId);
                     console.log('  - Sender ID:', senderId.toString());
 
-                    // Emit to receiver's room
+                    // Emit ONLY to receiver's room
+                    // Sender already sees the message via optimistic UI update
                     io.to(receiverId).emit("newMessage", newMessage);
                     console.log('  ✅ Emitted to receiver room:', receiverId);
-
-                    // Also emit to sender's room so they can see it in real-time
-                    io.to(senderId.toString()).emit("newMessage", newMessage);
-                    console.log('  ✅ Emitted to sender room:', senderId.toString());
                 }
                 // GROUP MESSAGE
                 if (groupId) {
                     console.log('📡 Emitting to Socket.IO - newGroupMessage');
+                    // For groups, emit to everyone (sender will handle duplicate check)
                     io.emit("newGroupMessage", newMessage);
                 }
 
