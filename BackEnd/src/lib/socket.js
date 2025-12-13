@@ -77,6 +77,26 @@ io.on("connection", (socket) => {
     });
 
     // -------------------------
+    // Typing Indicators
+    // -------------------------
+    socket.on("typing", ({ toUserId }) => {
+        io.to(toUserId).emit("typing", { senderId: userId });
+    });
+
+    socket.on("stopTyping", ({ toUserId }) => {
+        io.to(toUserId).emit("stopTyping", { senderId: userId });
+    });
+
+    socket.on("groupTyping", ({ groupId, userName }) => {
+        // Broadcast to everyone to ensure visibility in GroupList
+        io.emit("groupTyping", { groupId, userId, userName });
+    });
+
+    socket.on("groupStopTyping", ({ groupId, userName }) => {
+        io.emit("groupStopTyping", { groupId, userId, userName });
+    });
+
+    // -------------------------
     // Disconnect
     // -------------------------
     socket.on("disconnect", () => {

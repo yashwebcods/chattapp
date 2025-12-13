@@ -22,7 +22,7 @@ import { useMessageStore } from "./store/useMessageStore";
 
 function App() {
   const { authUser, checkAuth, isCheckingAuth, socket } = useAuthStore();
-  const { subscribeToGroupMessages, unsubscribeFromGroupMessages, subcribeToMessages, unsubcribeToMessage } = useMessageStore();
+  const { subscribeToGroupMessages, unsubscribeFromGroupMessages, subcribeToMessages, unsubcribeToMessage, subscribeToTypingEvents, unsubscribeFromTypingEvents } = useMessageStore();
   const { theme } = useThemeStore();
 
   useEffect(() => {
@@ -33,6 +33,7 @@ function App() {
     if (authUser && socket) {
       subscribeToGroupMessages();
       subcribeToMessages();
+      subscribeToTypingEvents();
 
       // Request Notification Permission
       requestPermission().then(token => {
@@ -58,9 +59,10 @@ function App() {
       if (socket) {
         unsubscribeFromGroupMessages();
         unsubcribeToMessage();
+        unsubscribeFromTypingEvents();
       }
     };
-  }, [authUser, socket, subscribeToGroupMessages, unsubscribeFromGroupMessages, subcribeToMessages, unsubcribeToMessage]);
+  }, [authUser, socket, subscribeToGroupMessages, unsubscribeFromGroupMessages, subcribeToMessages, unsubcribeToMessage, subscribeToTypingEvents, unsubscribeFromTypingEvents]);
 
   if (isCheckingAuth && !authUser) {
     return (

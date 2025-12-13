@@ -4,7 +4,7 @@ import { Users, MessageSquare, Search, Bell, Clock, UserCheck } from 'lucide-rea
 import { useNavigate } from 'react-router-dom'
 
 function GroupsListPage() {
-    const { groups, getGroups, unreadCounts, sellerIndex, clearUnreadCount } = useMessageStore()
+    const { groups, getGroups, unreadCounts, sellerIndex, clearUnreadCount, groupTypingData } = useMessageStore()
     const navigate = useNavigate()
     const [searchTerm, setSearchTerm] = useState('')
     const [showUnreadOnly, setShowUnreadOnly] = useState(false)
@@ -24,11 +24,11 @@ function GroupsListPage() {
         const groupName = `${Math.abs(group.sellerIndex + 1)} - ${group.sellerId?.companyName || ''}`.toLowerCase()
         const sellerName = group.sellerId?.name?.toLowerCase() || ''
         const matchesSearch = groupName.includes(searchLower) || sellerName.includes(searchLower)
-        
+
         // If showUnreadOnly is true, only show groups with unread messages
         const hasUnread = unreadCounts[group._id] > 0
         const matchesUnread = showUnreadOnly ? hasUnread : true
-        
+
         return matchesSearch && matchesUnread
     })
 
@@ -111,6 +111,12 @@ function GroupsListPage() {
                                                 {group.sellerId && (
                                                     <div className='mt-2 text-xs text-base-content/50'>
                                                         <p>Seller: {group.sellerId.name}</p>
+                                                    </div>
+                                                )}
+                                                {/* Typing Indication in List */}
+                                                {groupTypingData[group._id] && groupTypingData[group._id].length > 0 && (
+                                                    <div className='text-xs text-primary animate-pulse font-medium mt-1'>
+                                                        {groupTypingData[group._id].join(", ")} is typing...
                                                     </div>
                                                 )}
                                             </div>

@@ -4,15 +4,17 @@ import { useAuthStore } from '../store/useAuthStore'
 import { X, MoreVertical, Trash2, CheckSquare, ArrowLeft } from 'lucide-react'
 
 export const ChatHeader = () => {
-  const { 
-    selectedUser, 
-    selectedGroup, 
-    setSelectedUser, 
-    setSelectedGroup, 
-    clearChat, 
+  const {
+    selectedUser,
+    selectedGroup,
+    setSelectedUser,
+    setSelectedGroup,
+    clearChat,
     clearGroupChat,
-    setSelectionMode, 
-    isSelectionMode 
+    setSelectionMode,
+    isSelectionMode,
+    typingUsers,
+    groupTypingData
   } = useMessageStore()
   const { onlineUsers } = useAuthStore()
 
@@ -45,7 +47,22 @@ export const ChatHeader = () => {
   const displayName = selectedUser?.fullName || selectedGroup?.name || 'Chat';
   const displayImage = selectedUser?.image || selectedGroup?.image || '/avatar.png';
   const isOnline = selectedUser ? onlineUsers.includes(selectedUser._id) : false;
-  const statusText = selectedGroup ? `${selectedGroup.members?.length || 0} members` : (isOnline ? "Online" : "Offline");
+
+  // Typing indicator logic
+  const isUserTyping = selectedUser && typingUsers.includes(selectedUser._id);
+  const groupTypers = selectedGroup && groupTypingData[selectedGroup._id];
+  const isGroupTyping = groupTypers && groupTypers.length > 0;
+
+  let statusText;
+  if (isUserTyping) {
+    statusText = "typing...";
+  } else if (isGroupTyping) {
+    statusText = `${groupTypers.join(", ")} typing...`;
+  } else if (selectedGroup) {
+    statusText = `${selectedGroup.members?.length || 0} members`;
+  } else {
+    statusText = isOnline ? "Online" : "Offline";
+  }
 
   return (
     <div className="p-2.5 sm:p-3 border-b border-base-300">
@@ -73,7 +90,7 @@ export const ChatHeader = () => {
           {/* User/Group info */}
           <div className="min-w-0 flex-1">
             <h3 className="font-medium text-sm sm:text-base truncate">{displayName}</h3>
-            <p className="text-xs sm:text-sm text-base-content/70 truncate">
+            <p className={`text-xs sm:text-sm truncate ${(isUserTyping || isGroupTyping) ? 'text-primary animate-pulse font-medium' : 'text-base-content/70'}`}>
               {statusText}
             </p>
           </div>
@@ -83,9 +100,9 @@ export const ChatHeader = () => {
         <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
           {/* Options Dropdown */}
           <div className="dropdown dropdown-end">
-            <button 
-              tabIndex={0} 
-              role="button" 
+            <button
+              tabIndex={0}
+              role="button"
               className="btn btn-ghost btn-circle btn-xs sm:btn-sm hover:bg-base-200"
               title="More options"
             >
@@ -110,8 +127,8 @@ export const ChatHeader = () => {
           </div>
 
           {/* Close button */}
-          <button 
-            onClick={handleClose} 
+          <button
+            onClick={handleClose}
             className="btn btn-ghost btn-circle btn-xs sm:btn-sm hover:bg-base-200"
             title="Close chat"
           >

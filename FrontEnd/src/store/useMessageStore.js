@@ -184,7 +184,12 @@ export const useMessageStore = create(persist((set, get) => ({
                     toast.success(`New message from ${senderName}`, { duration: 2000 });
 
                     // Increment unread count for this user
-                    const senderId = newMessage.senderId._id || newMessage.senderId;
+                    let senderId = newMessage.senderId._id || newMessage.senderId;
+                    // Ensure senderId is a string to match Sidebar keys
+                    if (senderId && typeof senderId !== 'string') {
+                        senderId = senderId.toString();
+                    }
+
                     set({
                         unreadCounts: {
                             ...unreadCounts,
@@ -417,7 +422,85 @@ export const useMessageStore = create(persist((set, get) => ({
         } catch (error) {
             toast.error(error.response?.data?.message || "Failed to clear group chat");
         }
-    }
+    },
+    // Typing Indicators
+    typingUsers: [], // Array of senderIds who are typing to me
+    groupTypingData: {}, // { groupId: [ "User1", "User2" ] }
+
+    subscribeToTypingEvents: () => {
+        const socket = useAuthStore.getState().socket;
+        if (!socket) return;
+
+        socket.on("typing", ({ senderId }) => {
+            const { typingUsers } = get();
+            if (!typingUsers.includes(senderId)) {
+                set({ typingUsers: [...typingUsers, senderId] });
+            }
+        });
+
+        socket.on("stopTyping", ({ senderId }) => {
+            const { typingUsers } = get();
+            set({ typingUsers: typingUsers.filter(id => id !== senderId) });
+        });
+
+        socket.on("groupTyping", ({ groupId, userId, userName }) => {
+            const { groupTypingData } = get();
+            const authUser = useAuthStore.getState().authUser;
+            if (userId === authUser._id) return; // Don't show self typing
+
+            const currentTypers = groupTypingData[groupId] || [];
+            if (!currentTypers.includes(userName)) {
+                set({
+                    groupTypingData: {
+                        ...groupTypingData,
+                        [groupId]: [...currentTypers, userName]
+                    }
+                });
+            }
+        });
+
+        socket.on("groupStopTyping", ({ groupId, userId, userName }) => {
+            const { groupTypingData } = get();
+            const currentTypers = groupTypingData[groupId] || [];
+            set({
+                groupTypingData: {
+                    ...groupTypingData,
+                    [groupId]: currentTypers.filter(name => name !== userName)
+                }
+            });
+        });
+    },
+
+    unsubscribeFromTypingEvents: () => {
+        const socket = useAuthStore.getState().socket;
+        if (socket) {
+            socket.off("typing");
+            socket.off("stopTyping");
+            socket.off("groupTyping");
+            socket.off("groupStopTyping");
+        }
+    },
+
+    sendTyping: (receiverId) => {
+        const socket = useAuthStore.getState().socket;
+        if (socket) socket.emit("typing", { toUserId: receiverId });
+    },
+
+    sendStopTyping: (receiverId) => {
+        const socket = useAuthStore.getState().socket;
+        if (socket) socket.emit("stopTyping", { toUserId: receiverId });
+    },
+
+    sendGroupTyping: (groupId, userName) => {
+        const socket = useAuthStore.getState().socket;
+        if (socket) socket.emit("groupTyping", { groupId, userName });
+    },
+
+    sendGroupStopTyping: (groupId, userName) => {
+        const socket = useAuthStore.getState().socket;
+        if (socket) socket.emit("groupStopTyping", { groupId, userName });
+    },
+
 }), {
     name: "message-store",
     partialize: (state) => ({ unreadCounts: state.unreadCounts }),

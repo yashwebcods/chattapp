@@ -1,26 +1,88 @@
 import { Image, Send, X } from 'lucide-react'
-import React, { useRef, useState } from 'react'
+import React, { useRef, useState, useEffect } from 'react'
 import { useMessageStore } from '../store/useMessageStore'
+import { useAuthStore } from '../store/useAuthStore'
 import toast from 'react-hot-toast'
 
 export const MessageInput = () => {
   const [text, setText] = useState("")
   const [imagePreview, setImagePreview] = useState(null)
   const fileInput = useRef(null)
-  const { sendMessages } = useMessageStore()
+  const typingTimeoutRef = useRef(null)
+  const isTypingRef = useRef(false)
+
+  const { sendMessages, selectedUser, selectedGroup, sendTyping, sendStopTyping, sendGroupTyping, sendGroupStopTyping } = useMessageStore()
+  const { authUser } = useAuthStore()
+
+  // Typing indicator logic
+  useEffect(() => {
+    if (text.trim()) {
+      // User is typing
+      if (!isTypingRef.current) {
+        isTypingRef.current = true;
+        if (selectedUser) {
+          sendTyping(selectedUser._id);
+        } else if (selectedGroup) {
+          sendGroupTyping(selectedGroup._id, authUser.fullName);
+        }
+      }
+
+      // Clear previous timeout
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+
+      // Set new timeout to stop typing after 2 seconds of inactivity
+      typingTimeoutRef.current = setTimeout(() => {
+        isTypingRef.current = false;
+        if (selectedUser) {
+          sendStopTyping(selectedUser._id);
+        } else if (selectedGroup) {
+          sendGroupStopTyping(selectedGroup._id, authUser.fullName);
+        }
+      }, 2000);
+    } else {
+      // Text is empty, stop typing immediately
+      if (isTypingRef.current) {
+        isTypingRef.current = false;
+        if (selectedUser) {
+          sendStopTyping(selectedUser._id);
+        } else if (selectedGroup) {
+          sendGroupStopTyping(selectedGroup._id, authUser.fullName);
+        }
+      }
+    }
+
+    // Cleanup on unmount
+    return () => {
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+    };
+  }, [text, selectedUser, selectedGroup, sendTyping, sendStopTyping, sendGroupTyping, sendGroupStopTyping, authUser]);
 
   const handleSendMessage = async (e) => {
     e.preventDefault()
     if (!text.trim() && !imagePreview) return
-    
+
+    // Stop typing indicator immediately
+    if (isTypingRef.current) {
+      isTypingRef.current = false;
+      if (selectedUser) {
+        sendStopTyping(selectedUser._id);
+      } else if (selectedGroup) {
+        sendGroupStopTyping(selectedGroup._id, authUser.fullName);
+      }
+    }
+
     // Store current values and clear input immediately
     const messageText = text.trim()
     const messageImage = imagePreview
-    
+
     setText('')
     setImagePreview(null)
     if (fileInput.current) fileInput.current.value = ''
-    
+
     try {
       console.log('Sending message:', messageText, messageImage ? 'with image' : 'text only')
       await sendMessages({
