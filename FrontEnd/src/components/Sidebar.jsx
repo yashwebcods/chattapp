@@ -23,7 +23,7 @@ function Sidebar({ onSelectUser }) {
     }, [getUsers])
 
     if (isUsersLoading) return <SidebarSkeleton />
-    
+
     return (
         <aside className='h-full w-full max-[1023px]:w-full min-[985px]:w-72 border-r border-base-300 flex flex-col transition-all duration-200'>
             <div className='border-b border-base-300 w-full p-5 '>
@@ -87,12 +87,12 @@ function Sidebar({ onSelectUser }) {
                     </div>
                 ) : (
                     filteredUsers.map((v) => (
-                        <button 
-                            key={v._id} 
+                        <button
+                            key={v._id}
                             onClick={() => {
-                            setSelectedUser(v)
-                            onSelectUser?.(v)
-                        }} 
+                                setSelectedUser(v)
+                                onSelectUser?.(v)
+                            }}
                             className={`w-full p-3 flex items-center gap-3 
                             hover:bg-base-300 transition-colors
                              ${selectedUser?._id === v._id ? "bg-base-300 ring-1 ring-base-300" : ""}

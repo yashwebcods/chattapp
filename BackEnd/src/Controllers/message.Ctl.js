@@ -128,17 +128,8 @@ export const sendMessage = async (req, res) => {
         try {
             let notificationTitle = req.user.fullName;
             if (groupId) {
-                const group = await Group.findById(groupId).populate('sellerId', 'companyName');
-                if (group && group.sellerId?.companyName) {
-                    // Calculate sellerIndex (same logic as in getGroups)
-                    const Seller = (await import('../Models/seller.model.js')).default;
-                    const docs = await Seller.find().sort({ createdAt: 1 });
-                    const index = docs.findIndex(
-                        doc => doc._id.toString() === group.sellerId._id.toString()
-                    );
-                    const formattedGroupName = `${Math.abs(index + 1)} - ${group.sellerId.companyName}`;
-                    notificationTitle = `New message from ${formattedGroupName}`;
-                } else if (group) {
+                const group = await Group.findById(groupId);
+                if (group) {
                     notificationTitle = `New message from ${group.name}`;
                 }
             }
