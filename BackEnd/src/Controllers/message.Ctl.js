@@ -306,10 +306,21 @@ export const deleteMessages = async (req, res) => {
         );
 
         // Emit socket event to update UI in real-time
-        // We need to know which group or chat this belongs to. 
-        // Assuming batch delete is for a single context, but it might differ.
-        // For simplicity, we might rely on client refreshing or we can emit if we have context.
-        // The current implementation didn't emit, so we'll leave it for now or add it if requested.
+        // Get all unique user IDs involved in these messages
+        const involvedUsers = new Set();
+        messages.forEach(msg => {
+            if (msg.receiverId) involvedUsers.add(msg.receiverId.toString());
+            if (msg.senderId) involvedUsers.add(msg.senderId.toString());
+        });
+
+        // Emit to all involved users
+        console.log('🗑️ Emitting messagesDeleted event to users:', Array.from(involvedUsers));
+        involvedUsers.forEach(userId => {
+            io.to(userId).emit("messagesDeleted", {
+                messageIds,
+                deletedBy: req.user._id
+            });
+        });
 
         res.status(200).json({ message: "Messages deleted successfully" });
     } catch (error) {
