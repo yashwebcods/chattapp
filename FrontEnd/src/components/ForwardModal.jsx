@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useMessageStore } from '../store/useMessageStore';
-import { Search, User, Users, X, Send } from 'lucide-react';
+import { Search, User, Users, X, Send, CheckCircle2, Circle } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const ForwardModal = () => {
@@ -13,6 +13,8 @@ const ForwardModal = () => {
     } = useMessageStore();
 
     const [searchTerm, setSearchTerm] = useState('');
+    const [selectedTargets, setSelectedTargets] = useState([]); // Array of { id, isGroup, name }
+    const [isSending, setIsSending] = useState(false);
 
     if (!forwardingMessage) return null;
 
@@ -25,14 +27,45 @@ const ForwardModal = () => {
         (group.sellerId?.companyName?.toLowerCase().includes(searchTerm.toLowerCase()))
     );
 
-    const handleForward = async (targetId, isGroup) => {
-        await forwardMessage(forwardingMessage, targetId, isGroup);
-        setForwardingMessage(null);
+    const toggleTarget = (id, isGroup, name) => {
+        setSelectedTargets(prev => {
+            const exists = prev.find(t => t.id === id);
+            if (exists) {
+                return prev.filter(t => t.id !== id);
+            } else {
+                return [...prev, { id, isGroup, name }];
+            }
+        });
+    };
+
+    const handleBatchForward = async () => {
+        if (selectedTargets.length === 0) {
+            toast.error('Please select at least one recipient');
+            return;
+        }
+
+        setIsSending(true);
+        const loadingToast = toast.loading(`Forwarding message to ${selectedTargets.length} recipients...`);
+
+        try {
+            // Process forwarding sequentially or in parallel? 
+            // Better to do it in a loop with individual results
+            for (const target of selectedTargets) {
+                await forwardMessage(forwardingMessage, target.id, target.isGroup);
+            }
+            toast.success('Message forwarded successfully', { id: loadingToast });
+            setForwardingMessage(null);
+            setSelectedTargets([]);
+        } catch (error) {
+            toast.error('Failed to forward to some recipients', { id: loadingToast });
+        } finally {
+            setIsSending(false);
+        }
     };
 
     return (
         <div className="modal modal-open">
-            <div className="modal-box max-w-md bg-base-100 p-0 overflow-hidden border border-base-300 shadow-2xl rounded-2xl">
+            <div className="modal-box max-w-md bg-base-100 p-0 overflow-hidden border border-base-300 shadow-2xl rounded-2xl flex flex-col max-h-[85vh]">
                 {/* Modal Header */}
                 <div className="p-4 border-b border-base-300 flex items-center justify-between bg-base-200/50">
                     <div className="flex items-center gap-2">
@@ -40,7 +73,10 @@ const ForwardModal = () => {
                         <h3 className="font-bold text-lg">Forward Message</h3>
                     </div>
                     <button
-                        onClick={() => setForwardingMessage(null)}
+                        onClick={() => {
+                            setForwardingMessage(null);
+                            setSelectedTargets([]);
+                        }}
                         className="btn btn-ghost btn-sm btn-circle"
                     >
                         <X className="size-5" />
@@ -61,34 +97,57 @@ const ForwardModal = () => {
                     </div>
                 </div>
 
+                {/* Selected Count / Multi-Forward Button */}
+                {selectedTargets.length > 0 && (
+                    <div className="p-3 bg-primary/10 border-b border-primary/20 flex items-center justify-between">
+                        <span className="text-sm font-medium text-primary">
+                            {selectedTargets.length} recipient{selectedTargets.length > 1 ? 's' : ''} selected
+                        </span>
+                        <button
+                            onClick={handleBatchForward}
+                            disabled={isSending}
+                            className="btn btn-primary btn-sm rounded-full gap-2 px-6"
+                        >
+                            {isSending ? <span className="loading loading-spinner loading-xs"></span> : <Send className="size-3" />}
+                            Forward
+                        </button>
+                    </div>
+                )}
+
                 {/* Recipients List */}
-                <div className="max-h-[50vh] overflow-y-auto">
+                <div className="flex-1 overflow-y-auto">
                     {/* Groups Section */}
                     {filteredGroups.length > 0 && (
                         <div className="p-2">
                             <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider opacity-50">Groups</div>
-                            {filteredGroups.map((group) => (
-                                <button
-                                    key={group._id}
-                                    onClick={() => handleForward(group._id, true)}
-                                    className="w-full flex items-center gap-3 p-3 hover:bg-base-200 transition-all rounded-xl text-left"
-                                >
-                                    <div className="size-10 rounded-full bg-primary/10 flex items-center justify-center">
-                                        {group.image ? (
-                                            <img src={group.image} className="size-10 rounded-full border" alt="" />
-                                        ) : (
-                                            <Users className="size-5 text-primary" />
-                                        )}
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <div className="font-medium truncate">
-                                            {group.sellerId?.companyName ? `${Math.abs(group.sellerIndex + 1)} - ${group.sellerId.companyName}` : group.name}
+                            {filteredGroups.map((group) => {
+                                const isSelected = selectedTargets.some(t => t.id === group._id);
+                                const groupName = group.sellerId?.companyName ? `${Math.abs(group.sellerIndex + 1)} - ${group.sellerId.companyName}` : group.name;
+                                return (
+                                    <button
+                                        key={group._id}
+                                        onClick={() => toggleTarget(group._id, true, groupName)}
+                                        className={`w-full flex items-center gap-3 p-3 transition-all rounded-xl text-left mb-1 ${isSelected ? 'bg-primary/5 ring-1 ring-primary/20' : 'hover:bg-base-200'}`}
+                                    >
+                                        <div className="size-10 rounded-full bg-primary/10 flex items-center justify-center">
+                                            {group.image ? (
+                                                <img src={group.image} className="size-10 rounded-full border" alt="" />
+                                            ) : (
+                                                <Users className="size-5 text-primary" />
+                                            )}
                                         </div>
-                                        <div className="text-xs opacity-50">{group.members?.length} members</div>
-                                    </div>
-                                    <Send className="size-4 opacity-0 group-hover:opacity-100 text-primary" />
-                                </button>
-                            ))}
+                                        <div className="flex-1 min-w-0">
+                                            <div className="font-medium truncate">{groupName}</div>
+                                            <div className="text-xs opacity-50">{group.members?.length} members</div>
+                                        </div>
+                                        {isSelected ? (
+                                            <CheckCircle2 className="size-5 text-primary fill-primary/10" />
+                                        ) : (
+                                            <Circle className="size-5 opacity-20" />
+                                        )}
+                                    </button>
+                                );
+                            })}
                         </div>
                     )}
 
@@ -96,24 +155,31 @@ const ForwardModal = () => {
                     {filteredUsers.length > 0 && (
                         <div className="p-2">
                             <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider opacity-50">Contacts</div>
-                            {filteredUsers.map((user) => (
-                                <button
-                                    key={user._id}
-                                    onClick={() => handleForward(user._id, false)}
-                                    className="w-full flex items-center gap-3 p-3 hover:bg-base-200 transition-all rounded-xl text-left"
-                                >
-                                    <div className="avatar">
-                                        <div className="size-10 rounded-full">
-                                            <img src={user.image || '/avatar.png'} alt={user.fullName} />
+                            {filteredUsers.map((user) => {
+                                const isSelected = selectedTargets.some(t => t.id === user._id);
+                                return (
+                                    <button
+                                        key={user._id}
+                                        onClick={() => toggleTarget(user._id, false, user.fullName)}
+                                        className={`w-full flex items-center gap-3 p-3 transition-all rounded-xl text-left mb-1 ${isSelected ? 'bg-primary/5 ring-1 ring-primary/20' : 'hover:bg-base-200'}`}
+                                    >
+                                        <div className="avatar">
+                                            <div className="size-10 rounded-full">
+                                                <img src={user.image || '/avatar.png'} alt={user.fullName} />
+                                            </div>
                                         </div>
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <div className="font-medium truncate">{user.fullName}</div>
-                                        <div className="text-xs opacity-50">{user.role}</div>
-                                    </div>
-                                    <Send className="size-4 opacity-0 group-hover:opacity-100 text-primary" />
-                                </button>
-                            ))}
+                                        <div className="flex-1 min-w-0">
+                                            <div className="font-medium truncate">{user.fullName}</div>
+                                            <div className="text-xs opacity-50">{user.role}</div>
+                                        </div>
+                                        {isSelected ? (
+                                            <CheckCircle2 className="size-5 text-primary fill-primary/10" />
+                                        ) : (
+                                            <Circle className="size-5 opacity-20" />
+                                        )}
+                                    </button>
+                                );
+                            })}
                         </div>
                     )}
 
@@ -123,8 +189,16 @@ const ForwardModal = () => {
                         </div>
                     )}
                 </div>
+
+                {/* Bottom Stats (Optional) */}
+                <div className="p-4 bg-base-200/30 text-[10px] opacity-40 text-center uppercase tracking-widest font-bold">
+                    Select recipients to forward
+                </div>
             </div>
-            <div className="modal-backdrop bg-black/40 backdrop-blur-sm" onClick={() => setForwardingMessage(null)}></div>
+            <div className="modal-backdrop bg-black/40 backdrop-blur-sm" onClick={() => {
+                setForwardingMessage(null);
+                setSelectedTargets([]);
+            }}></div>
         </div>
     );
 };
