@@ -3,7 +3,13 @@ import cloudnairy from '../lib/cloudimary.js'
 import { getReseverSocketId, io } from '../lib/socket.js'
 import Group from '../Models/group.model.js'
 import admin from '../lib/firebase.js'
+import User from '../Models/user.model.js'
+import cloudnairy from '../lib/cloudimary.js'
+import { getReseverSocketId, io } from '../lib/socket.js'
+import Group from '../Models/group.model.js'
+import admin from '../lib/firebase.js'
 import Message from '../Models/message.model.js'
+import { supabase, bucketName } from '../lib/supabase.js'
 
 /* ============================================================
    GET ALL USERS EXCEPT LOGGED-IN USER
@@ -184,24 +190,52 @@ export const sendMessage = async (req, res) => {
         // Upload file if provided (PDFs, documents, etc.)
         if (file) {
             try {
-                console.log('📄 Uploading file as raw to Cloudinary...');
-                // Use 'raw' as requested to ensure storage in /raw/upload/
-                const uploadRes = await cloudnairy.uploader.upload(file, {
-                    resource_type: 'raw',
-                    folder: 'chat_files',
-                    chunk_size: 6000000
-                });
+                console.log('📄 Uploading file to Supabase Storage...');
 
-                // Append download parameter to the secure URL
-                fileUrl = `${uploadRes.secure_url}?response-content-disposition=attachment`;
+                // Convert base64 to buffer
+                // Format matches: data:application/pdf;base64,.....
+                const matches = file.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
 
+                if (!matches || matches.length !== 3) {
+                    return res.status(400).json({ error: 'Invalid file format' });
+                }
+
+                const fileType = matches[1];
+                const buffer = Buffer.from(matches[2], 'base64');
+
+                // Generate unique filename
+                const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+                // Use original extension if possible or default to .bin
+                const sanitizedFileName = (fileName || 'file').replace(/[^a-zA-Z0-9.-]/g, '_');
+                const path = `${uniqueSuffix}_${sanitizedFileName}`;
+
+                const { data, error } = await supabase
+                    .storage
+                    .from(bucketName)
+                    .upload(path, buffer, {
+                        contentType: fileType,
+                        upsert: false
+                    });
+
+                if (error) {
+                    console.error('Supabase upload error:', error);
+                    throw error;
+                }
+
+                // Get Public URL
+                const { data: publicURLData } = supabase
+                    .storage
+                    .from(bucketName)
+                    .getPublicUrl(path);
+
+                fileUrl = publicURLData.publicUrl;
                 messageType = 'file';
-                fileResourceType = 'raw';
-                console.log('✅ File uploaded (raw):', { url: fileUrl });
+                fileResourceType = 'supabase'; // Mark as stored in Supabase
+                console.log('✅ File uploaded to Supabase:', { url: fileUrl });
             } catch (uploadError) {
                 console.error('File upload error:', uploadError);
                 return res.status(400).json({
-                    error: 'Failed to upload file. File might be too large or invalid format.'
+                    error: 'Failed to upload file to storage.'
                 });
             }
         }
@@ -391,8 +425,9 @@ export const deleteMessages = async (req, res) => {
         // Find messages to delete
         const messages = await Message.find({ _id: { $in: messageIds } });
 
-        // Delete files from Cloudinary
+        // Delete files from storage (Cloudinary or Supabase)
         for (const msg of messages) {
+            // 1. Handle Images (Cloudinary)
             if (msg.image) {
                 const resType = msg.cloudinaryResourceType || 'image';
                 const publicId = extractPublicId(msg.image, resType);
@@ -400,11 +435,36 @@ export const deleteMessages = async (req, res) => {
                     await cloudnairy.uploader.destroy(publicId, { resource_type: resType });
                 }
             }
+
+            // 2. Handle Files (Supabase OR Legacy Cloudinary)
             if (msg.fileUrl) {
-                const resType = msg.cloudinaryResourceType || 'raw';
-                const publicId = extractPublicId(msg.fileUrl, resType);
-                if (publicId) {
-                    await cloudnairy.uploader.destroy(publicId, { resource_type: resType });
+                if (msg.cloudinaryResourceType === 'supabase') {
+                    // Delete from Supabase
+                    try {
+                        const fileUrlObj = new URL(msg.fileUrl);
+                        // Path is usually last segment(s) after the bucket name
+                        // URL format: .../storage/v1/object/public/chat_files/timestamp_filename
+                        const pathParts = fileUrlObj.pathname.split(`/${bucketName}/`);
+                        if (pathParts.length > 1) {
+                            const filePath = pathParts[1];
+                            const { error } = await supabase
+                                .storage
+                                .from(bucketName)
+                                .remove([filePath]);
+
+                            if (error) console.error('Error deleting file from Supabase:', error);
+                            else console.log('✅ File deleted from Supabase:', filePath);
+                        }
+                    } catch (err) {
+                        console.error('Error parsing Supabase URL for deletion:', err);
+                    }
+                } else {
+                    // Legacy: Delete from Cloudinary
+                    const resType = msg.cloudinaryResourceType || 'raw';
+                    const publicId = extractPublicId(msg.fileUrl, resType);
+                    if (publicId) {
+                        await cloudnairy.uploader.destroy(publicId, { resource_type: resType });
+                    }
                 }
             }
         }
