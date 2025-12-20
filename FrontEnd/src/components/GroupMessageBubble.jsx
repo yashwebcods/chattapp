@@ -1,0 +1,116 @@
+import React from 'react';
+import { DateFormated } from '../lib/utills';
+import { Pencil, Trash2, Clock, Copy, Share2, File } from 'lucide-react';
+import { useMessageStore } from '../store/useMessageStore';
+import { useAuthStore } from '../store/useAuthStore';
+import toast from 'react-hot-toast';
+
+const GroupMessageBubble = ({ msg, onEdit, onDelete, onShowHistory, messageEndRef }) => {
+    const { authUser } = useAuthStore();
+    const { setForwardingMessage, selectedGroup } = useMessageStore();
+
+    const isOwnMessage = msg.senderId?._id === authUser._id;
+    const members = selectedGroup?.members || [];
+
+    const handleCopy = () => {
+        if (!msg.text) return;
+        navigator.clipboard.writeText(msg.text);
+        toast.success('Copied to clipboard');
+    };
+
+    const renderTextWithMentions = (text) => {
+        if (!text) return null;
+
+        // Match @Name where Name is a member's full name
+        // We escape special regex characters in member names
+        const escapedMemberNames = members
+            .map(m => m.fullName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+            .filter(name => name.length > 0);
+
+        if (escapedMemberNames.length === 0) return text;
+
+        const regex = new RegExp(`@(${escapedMemberNames.join('|')})`, 'g');
+        const parts = text.split(regex);
+
+        return parts.map((part, i) => {
+            if (members.some(m => m.fullName === part)) {
+                return (
+                    <span key={i} className="text-primary font-bold bg-primary/10 px-1 rounded">
+                        @{part}
+                    </span>
+                );
+            }
+            return part;
+        });
+    };
+
+    if (msg.isSystemMessage) {
+        return (
+            <div className='flex justify-center my-4' ref={messageEndRef}>
+                <div className='bg-base-300 px-4 py-2 rounded-full text-xs text-base-content/60'>
+                    {msg.text}
+                </div>
+            </div>
+        );
+    }
+
+    return (
+        <div className={`chat ${isOwnMessage ? "chat-end" : "chat-start"} group/msg`} ref={messageEndRef}>
+            <div className='chat-image avatar'>
+                <div className='size-10 rounded-full border'>
+                    <img src={msg.senderId?.image || '/avatar.png'} alt={msg.senderId?.fullName} />
+                </div>
+            </div>
+            <div className='chat-header mb-1 flex items-center gap-2'>
+                <span className='font-medium'>{msg.senderId?.fullName}</span>
+                <time className='text-xs opacity-50'>{DateFormated(msg.createdAt)}</time>
+
+                {/* Actions: Copy, Forward, Edit, Delete */}
+                <div className="flex items-center gap-1 opacity-0 group-hover/msg:opacity-100 transition-opacity">
+                    <button onClick={handleCopy} className="btn btn-ghost btn-xs text-success p-0 size-5 min-h-0" title="Copy">
+                        <Copy className="size-3" />
+                    </button>
+                    <button onClick={() => setForwardingMessage(msg)} className="btn btn-ghost btn-xs text-primary p-0 size-5 min-h-0" title="Forward">
+                        <Share2 className="size-3" />
+                    </button>
+                    {isOwnMessage && !msg.isDeleted && (
+                        <>
+                            <button onClick={() => onEdit(msg)} className="btn btn-ghost btn-xs text-info p-0 size-5 min-h-0" title="Edit">
+                                <Pencil className="size-3" />
+                            </button>
+                            <button onClick={() => onDelete(msg._id)} className="btn btn-ghost btn-xs text-error p-0 size-5 min-h-0" title="Delete">
+                                <Trash2 className="size-3" />
+                            </button>
+                        </>
+                    )}
+                </div>
+            </div>
+            <div className={`chat-bubble flex flex-col ${msg.isDeleted ? 'italic opacity-70' : ''}`}>
+                {msg.image && (
+                    <img src={msg.image} className='max-w-[200px] rounded mb-2' alt="message" />
+                )}
+                {msg.fileUrl && (
+                    <a href={msg.fileUrl} download={msg.fileName || 'file'} target="_blank" rel="noopener noreferrer"
+                        className='flex items-center gap-2 p-3 bg-base-300 rounded-lg hover:bg-base-200 transition mb-2'>
+                        <File className='size-5 text-primary' />
+                        <div className='flex-1 min-w-0'>
+                            <p className='font-medium truncate'>{msg.fileName || 'File'}</p>
+                            <p className='text-xs opacity-70'>Click to download/view</p>
+                        </div>
+                    </a>
+                )}
+                <div className="whitespace-pre-wrap">
+                    {renderTextWithMentions(msg.text)}
+                </div>
+                {msg.isEdited && (
+                    <button onClick={(e) => { e.stopPropagation(); onShowHistory(msg); }}
+                        className='text-[10px] opacity-50 self-end mt-1 italic hover:text-primary flex items-center gap-0.5'>
+                        <Clock className='size-2.5' /> edited
+                    </button>
+                )}
+            </div>
+        </div>
+    );
+};
+
+export default GroupMessageBubble;
