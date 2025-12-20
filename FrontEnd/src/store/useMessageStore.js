@@ -160,7 +160,23 @@ export const useMessageStore = create(persist((set, get) => ({
                 set({ message: [...message, res.data] });
             }
 
-            toast.success("Message forwarded");
+            // Reorder sidebar - Move target to top
+            const { users, groups } = get();
+            if (isGroup) {
+                const group = groups.find(g => g._id === targetId);
+                if (group) {
+                    const otherGroups = groups.filter(g => g._id !== targetId);
+                    set({ groups: [group, ...otherGroups] });
+                }
+            } else {
+                const user = users.find(u => u._id === targetId);
+                if (user) {
+                    const otherUsers = users.filter(u => u._id !== targetId);
+                    set({ users: [user, ...otherUsers] });
+                }
+            }
+
+            // toast.success("Message forwarded"); // Removed for batch forwarding cleanliness
         } catch (error) {
             console.error('Forward message error:', error);
             toast.error(error.response?.data?.message || "Failed to forward message");

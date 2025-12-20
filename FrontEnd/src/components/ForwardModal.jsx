@@ -48,9 +48,12 @@ const ForwardModal = () => {
         const loadingToast = toast.loading(`Forwarding message to ${selectedTargets.length} recipients...`);
 
         try {
-            // Process forwarding sequentially or in parallel? 
-            // Better to do it in a loop with individual results
-            for (const target of selectedTargets) {
+            // Process forwarding in REVERSE order
+            // This ensures that the FIRST selected recipient ends up at the VERY TOP of the sidebar
+            // because the reordering logic in forwardMessage moves the target to the top each time.
+            const targetsToProcess = [...selectedTargets].reverse();
+
+            for (const target of targetsToProcess) {
                 await forwardMessage(forwardingMessage, target.id, target.isGroup);
             }
             toast.success('Message forwarded successfully', { id: loadingToast });
