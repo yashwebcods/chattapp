@@ -437,8 +437,6 @@ export const deleteMessages = async (req, res) => {
                     // Delete from Supabase
                     try {
                         const fileUrlObj = new URL(msg.fileUrl);
-                        // Path is usually last segment(s) after the bucket name
-                        // URL format: .../storage/v1/object/public/chat_files/timestamp_filename
                         const pathParts = fileUrlObj.pathname.split(`/${bucketName}/`);
                         if (pathParts.length > 1) {
                             const filePath = pathParts[1];
@@ -449,16 +447,23 @@ export const deleteMessages = async (req, res) => {
 
                             if (error) console.error('Error deleting file from Supabase:', error);
                             else console.log('✅ File deleted from Supabase:', filePath);
+                        } else {
+                            console.warn('⚠️ Could not extract path from Supabase URL:', msg.fileUrl);
                         }
                     } catch (err) {
                         console.error('Error parsing Supabase URL for deletion:', err);
                     }
                 } else {
                     // Legacy: Delete from Cloudinary
-                    const resType = msg.cloudinaryResourceType || 'raw';
-                    const publicId = extractPublicId(msg.fileUrl, resType);
-                    if (publicId) {
-                        await cloudnairy.uploader.destroy(publicId, { resource_type: resType });
+                    try {
+                        const resType = msg.cloudinaryResourceType || 'raw';
+                        const publicId = extractPublicId(msg.fileUrl, resType);
+                        if (publicId) {
+                            console.log('🗑️ Deleting legacy file from Cloudinary:', publicId);
+                            await cloudnairy.uploader.destroy(publicId, { resource_type: resType });
+                        }
+                    } catch (err) {
+                        console.error('Error deleting legacy file from Cloudinary:', err);
                     }
                 }
             }
