@@ -5,7 +5,9 @@ import { MessageInput } from './MessageInput';
 import ChatSkeleton from './Skeletons/ChatSkeleton';
 import { useAuthStore } from '../store/useAuthStore';
 import { DateFormated } from '../lib/utills';
-import { Trash2, Pencil, Clock, X } from 'lucide-react';
+import { Trash2, Pencil, Clock, X, Copy, Share2 } from 'lucide-react';
+import toast from 'react-hot-toast';
+import ForwardModal from './ForwardModal';
 
 function Chat() {
   const {
@@ -25,6 +27,7 @@ function Chat() {
     unsubscribeFromGroupMessages,
     editMessage,
     setEditingMessage,
+    setForwardingMessage,
   } = useMessageStore();
 
   const { authUser } = useAuthStore();
@@ -54,6 +57,12 @@ function Chat() {
       messageEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
   }, [message, isSelectionMode]);
+
+  const handleCopyMessage = (text) => {
+    if (!text) return;
+    navigator.clipboard.writeText(text);
+    toast.success('Message copied to clipboard');
+  };
 
   const handleDeleteSelected = async () => {
     if (window.confirm(`Delete ${selectedMessageIds.length} messages?`)) {
@@ -147,6 +156,26 @@ function Chat() {
                       </time>
                       {isOwnMessage && !v.isDeleted && (
                         <div className='flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity'>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleCopyMessage(v.text);
+                            }}
+                            className='btn btn-ghost btn-xs text-success p-0 size-5 min-h-0'
+                            title='Copy message'
+                          >
+                            <Copy className='size-3' />
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setForwardingMessage(v);
+                            }}
+                            className='btn btn-ghost btn-xs text-primary p-0 size-5 min-h-0'
+                            title='Forward message'
+                          >
+                            <Share2 className='size-3' />
+                          </button>
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
@@ -284,6 +313,8 @@ function Chat() {
           <div className="modal-backdrop bg-black/40 backdrop-blur-sm" onClick={() => setShowHistoryMsg(null)}></div>
         </div>
       )}
+      {/* Forwarding Modal */}
+      <ForwardModal />
     </div>
   );
 }

@@ -19,6 +19,8 @@ export const useMessageStore = create(persist((set, get) => ({
     sellerIndex: null,
     editingMessage: null, // The message being edited
     setEditingMessage: (msg) => set({ editingMessage: msg }),
+    forwardingMessage: null,
+    setForwardingMessage: (msg) => set({ forwardingMessage: msg }),
     setGroup: (value) => set({ isOn: value }),
 
     getUsers: async () => {
@@ -116,6 +118,40 @@ export const useMessageStore = create(persist((set, get) => ({
             console.error('Send message error:', error);
             toast.error(error.response?.data?.message || "Failed to send message");
             return null; // Return null on error so input can still clear
+        }
+    },
+
+    forwardMessage: async (msg, targetId, isGroup) => {
+        const authUser = useAuthStore.getState().authUser;
+        const messageData = {
+            text: msg.text || "",
+            image: msg.image || null,
+        };
+
+        try {
+            const endpoint = isGroup
+                ? `/message/send/undefined`
+                : `/message/send/${targetId}`;
+
+            const data = isGroup
+                ? { ...messageData, groupId: targetId }
+                : messageData;
+
+            const res = await axiosInstance.post(endpoint, data);
+
+            // If the target is the currently selected user/group, update the local message list
+            const { selectedUser, selectedGroup, message } = get();
+            const isToCurrent = (isGroup && selectedGroup?._id === targetId) ||
+                (!isGroup && selectedUser?._id === targetId);
+
+            if (isToCurrent) {
+                set({ message: [...message, res.data] });
+            }
+
+            toast.success("Message forwarded");
+        } catch (error) {
+            console.error('Forward message error:', error);
+            toast.error(error.response?.data?.message || "Failed to forward message");
         }
     },
 
