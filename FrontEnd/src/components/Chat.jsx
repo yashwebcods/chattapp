@@ -5,7 +5,7 @@ import { MessageInput } from './MessageInput';
 import ChatSkeleton from './Skeletons/ChatSkeleton';
 import { useAuthStore } from '../store/useAuthStore';
 import { DateFormated } from '../lib/utills';
-import { Trash2, Pencil, Clock } from 'lucide-react';
+import { Trash2, Pencil, Clock, X } from 'lucide-react';
 
 function Chat() {
   const {
