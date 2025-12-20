@@ -5,7 +5,7 @@ import { MessageInput } from './MessageInput';
 import ChatSkeleton from './Skeletons/ChatSkeleton';
 import { useAuthStore } from '../store/useAuthStore';
 import { DateFormated, getDownloadUrl } from '../lib/utills';
-import { Trash2, Pencil, Clock, X, Copy, Share2, Download, Paperclip, CheckCheck } from 'lucide-react';
+import { Trash2, Pencil, Clock, X, Copy, Share2, Download, Paperclip, CheckCheck, Loader2 as Loader } from 'lucide-react';
 import toast from 'react-hot-toast';
 import ForwardModal from './ForwardModal';
 
