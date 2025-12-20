@@ -1,6 +1,6 @@
 import React from 'react';
 import { DateFormated, getDownloadUrl } from '../lib/utills';
-import { Pencil, Trash2, Clock, Copy, Share2, File, CheckCheck } from 'lucide-react';
+import { Pencil, Trash2, Clock, Copy, Share2, File, CheckCheck, Download } from 'lucide-react';
 import { useMessageStore } from '../store/useMessageStore';
 import { useAuthStore } from '../store/useAuthStore';
 import toast from 'react-hot-toast';
@@ -64,7 +64,7 @@ const GroupMessageBubble = ({ msg, onEdit, onDelete, onShowHistory, messageEndRe
             <div className='chat-header mb-1 flex items-center gap-2'>
                 <span className='font-medium'>{msg.senderId?.fullName}</span>
 
-                {/* Actions: Copy, Forward, Edit, Delete */}
+                {/* Actions: Copy, Forward, Download, Edit, Delete */}
                 <div className="flex items-center gap-1 opacity-0 group-hover/msg:opacity-100 transition-opacity">
                     <button onClick={handleCopy} className="btn btn-ghost btn-xs text-success p-0 size-5 min-h-0" title="Copy">
                         <Copy className="size-3" />
@@ -72,6 +72,17 @@ const GroupMessageBubble = ({ msg, onEdit, onDelete, onShowHistory, messageEndRe
                     <button onClick={() => setForwardingMessage(msg)} className="btn btn-ghost btn-xs text-primary p-0 size-5 min-h-0" title="Forward">
                         <Share2 className="size-3" />
                     </button>
+                    {(msg.image || msg.fileUrl) && (
+                        <a
+                            href={getDownloadUrl(msg.image || msg.fileUrl)}
+                            download={msg.fileName || (msg.image ? 'image.png' : 'file')}
+                            onClick={(e) => e.stopPropagation()}
+                            className="btn btn-ghost btn-xs text-secondary p-0 size-5 min-h-0"
+                            title="Download"
+                        >
+                            <Download className="size-3" />
+                        </a>
+                    )}
                     {isOwnMessage && !msg.isDeleted && (
                         <>
                             <button onClick={() => onEdit(msg)} className="btn btn-ghost btn-xs text-info p-0 size-5 min-h-0" title="Edit">

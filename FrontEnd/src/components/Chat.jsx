@@ -205,7 +205,7 @@ function Chat() {
                           </div>
 
                           <div className='chat-header flex items-center gap-1 sm:gap-2 flex-wrap min-h-[24px]'>
-                            {isOwnMessage && !v.isDeleted && (
+                            {!v.isDeleted && (
                               <div className='flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity'>
                                 <button
                                   onClick={(e) => {
@@ -227,28 +227,43 @@ function Chat() {
                                 >
                                   <Share2 className='size-3' />
                                 </button>
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setEditingMessage(v);
-                                  }}
-                                  className='btn btn-ghost btn-xs text-info p-0 size-5 min-h-0'
-                                  title='Edit message'
-                                >
-                                  <Pencil className='size-3' />
-                                </button>
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    if (window.confirm('Delete this message?')) {
-                                      deleteMessages([v._id]);
-                                    }
-                                  }}
-                                  className='btn btn-ghost btn-xs text-error p-0 size-5 min-h-0'
-                                  title='Delete message'
-                                >
-                                  <Trash2 className='size-3' />
-                                </button>
+                                {(v.image || v.fileUrl) && (
+                                  <a
+                                    href={getDownloadUrl(v.image || v.fileUrl)}
+                                    download={v.fileName || (v.image ? 'image.png' : 'file')}
+                                    onClick={(e) => e.stopPropagation()}
+                                    className='btn btn-ghost btn-xs text-secondary p-0 size-5 min-h-0'
+                                    title='Download'
+                                  >
+                                    <Download className='size-3' />
+                                  </a>
+                                )}
+                                {isOwnMessage && (
+                                  <>
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setEditingMessage(v);
+                                      }}
+                                      className='btn btn-ghost btn-xs text-info p-0 size-5 min-h-0'
+                                      title='Edit message'
+                                    >
+                                      <Pencil className='size-3' />
+                                    </button>
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        if (window.confirm('Delete this message?')) {
+                                          deleteMessages([v._id]);
+                                        }
+                                      }}
+                                      className='btn btn-ghost btn-xs text-error p-0 size-5 min-h-0'
+                                      title='Delete message'
+                                    >
+                                      <Trash2 className='size-3' />
+                                    </button>
+                                  </>
+                                )}
                               </div>
                             )}
                           </div>
