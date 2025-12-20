@@ -101,7 +101,7 @@ function AddSellerPage() {
                                 <Lock className='size-5 text-base-content/40' />
                             </div>
                             <input
-                                type="text"
+                                type="password"
                                 className={`input input-bordered w-full pl-10`}
                                 placeholder="Password"
                                 value={formData.password}

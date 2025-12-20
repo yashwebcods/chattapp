@@ -164,26 +164,28 @@ export const sendMessage = async (req, res) => {
         // Upload image if provided
         if (image) {
             const uploadRes = await cloudnairy.uploader.upload(image, {
-                resource_type: 'image',
+                resource_type: 'auto', // Changed to auto for better handling
                 folder: 'chat_images'
             });
             imageUrl = uploadRes.secure_url;
             messageType = 'image';
+            // Store the detected resource type
+            var imageResourceType = uploadRes.resource_type;
         }
 
         // Upload file if provided (PDFs, documents, etc.)
         if (file) {
             try {
-                // For PDFs and other documents, use 'raw' resource type
+                // Use 'auto' to correctly detect PDF, ZIP, etc.
                 const uploadRes = await cloudnairy.uploader.upload(file, {
-                    resource_type: 'raw', // 'raw' is better for PDFs and documents
+                    resource_type: 'auto',
                     folder: 'chat_files',
-                    // Allow large files (up to 100MB)
                     chunk_size: 6000000,
                     format: fileName ? fileName.split('.').pop() : undefined
                 });
                 fileUrl = uploadRes.secure_url;
                 messageType = 'file';
+                var fileResourceType = uploadRes.resource_type;
             } catch (uploadError) {
                 console.error('File upload error:', uploadError);
                 return res.status(400).json({
@@ -210,7 +212,8 @@ export const sendMessage = async (req, res) => {
             fileName: fileName || null,
             fileType: fileType || null,
             fileSize: fileSize || null,
-            messageType: messageType
+            messageType: messageType,
+            cloudinaryResourceType: imageResourceType || fileResourceType || null
         });
 
         await newMessage.save();
@@ -343,7 +346,7 @@ const extractPublicId = (url, resourceType = 'image') => {
 
         // For images, we remove the extension from the public ID
         // For raw files (documents), the public ID usually includes the extension
-        if (resourceType === 'image') {
+        if (resourceType === 'image' || resourceType === 'video') {
             filename = filenameWithExt.split('.')[0];
         }
 
@@ -377,16 +380,17 @@ export const deleteMessages = async (req, res) => {
         // Delete files from Cloudinary
         for (const msg of messages) {
             if (msg.image) {
-                const publicId = extractPublicId(msg.image, 'image');
+                const resType = msg.cloudinaryResourceType || 'image';
+                const publicId = extractPublicId(msg.image, resType);
                 if (publicId) {
-                    await cloudnairy.uploader.destroy(publicId, { resource_type: 'image' });
+                    await cloudnairy.uploader.destroy(publicId, { resource_type: resType });
                 }
             }
             if (msg.fileUrl) {
-                const publicId = extractPublicId(msg.fileUrl, 'raw');
+                const resType = msg.cloudinaryResourceType || 'raw';
+                const publicId = extractPublicId(msg.fileUrl, resType);
                 if (publicId) {
-                    // Files are uploaded as 'raw'
-                    await cloudnairy.uploader.destroy(publicId, { resource_type: 'raw' });
+                    await cloudnairy.uploader.destroy(publicId, { resource_type: resType });
                 }
             }
         }

@@ -35,6 +35,11 @@ const messageSchema = mongoose.Schema({
     fileSize: {
         type: Number
     },
+    cloudinaryResourceType: {
+        type: String,
+        enum: ['image', 'raw', 'video', null],
+        default: null
+    },
     // System message support
     isSystemMessage: {
         type: Boolean,
