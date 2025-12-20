@@ -11,6 +11,7 @@ import { axiosInstance } from '../lib/axios';
 import GroupChatHeader from '../components/GroupChatHeader';
 import GroupMessageList from '../components/GroupMessageList';
 import GroupMessageInput from '../components/GroupMessageInput';
+import GroupModals from '../components/GroupModals';
 import ForwardModal from '../components/ForwardModal';
 
 function GroupChatPage() {
@@ -156,8 +157,8 @@ function GroupChatPage() {
     }
 
     return (
-        <div className='min-h-screen bg-base-200'>
-            <div className='w-full h-screen max-w-full flex flex-col'>
+        <div className='min-h-screen bg-base-200 pt-16'>
+            <div className='w-full h-[calc(100vh-4rem)] max-w-full flex flex-col'>
                 <div className='flex-1 bg-base-100 shadow-xl overflow-hidden flex flex-col relative'>
                     <GroupChatHeader
                         selectedGroup={selectedGroup}
@@ -192,51 +193,8 @@ function GroupChatPage() {
                 </div>
             </div>
 
+            <GroupModals />
             <ForwardModal />
-
-            {/* Modals remain in the page for simplicity or can be extracted if needed */}
-            <dialog id="members_modal" className="modal">
-                <div className="modal-box">
-                    <form method="dialog"><button className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">✕</button></form>
-                    <h3 className="font-bold text-lg mb-4">Group Members</h3>
-                    <div className="space-y-2">
-                        {selectedGroup.members?.map((member) => (
-                            <div key={member._id} className="flex items-center gap-3 p-3 bg-base-200 rounded-lg">
-                                <div className="avatar"><div className="w-10 rounded-full"><img src={member.image || '/avatar.png'} alt="" /></div></div>
-                                <div className="flex-1">
-                                    <p className="font-medium">{member.fullName} {member._id === authUser._id && <span className="text-primary ml-1">(You)</span>}</p>
-                                    <p className="text-xs text-base-content/60">{member.email}</p>
-                                </div>
-                                {(authUser.role === 'owner' || authUser.role === 'manager') && member.role !== 'owner' && member.role !== 'manager' && member._id !== authUser._id && (
-                                    <button className="btn btn-sm btn-error btn-circle" onClick={() => handleRemoveMember(member._id)}><UserMinus className="size-4" /></button>
-                                )}
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            </dialog>
-
-            <dialog id="add_member_modal" className="modal">
-                <div className="modal-box">
-                    <form method="dialog"><button className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">✕</button></form>
-                    <h3 className="font-bold text-lg mb-4">Add Member</h3>
-                    <div className="input input-bordered flex items-center gap-2 mb-4">
-                        <Search className="size-4 opacity-50" />
-                        <input type="text" placeholder="Search..." className="grow" value={userSearchTerm} onChange={(e) => setUserSearchTerm(e.target.value)} />
-                    </div>
-                    <div className="max-h-60 overflow-y-auto space-y-2 mb-4">
-                        {allUsers.filter(u => !selectedGroup.members?.some(m => m._id === u._id) && u.fullName.toLowerCase().includes(userSearchTerm.toLowerCase())).map(user => (
-                            <div key={user._id} onClick={() => setSelectedUserId(user._id)} className={`p-3 rounded-lg border cursor-pointer ${selectedUserId === user._id ? 'bg-primary text-primary-content' : 'bg-base-200'}`}>
-                                <div className='flex items-center gap-3'>
-                                    <div className='avatar'><div className='w-8 rounded-full'><img src={user.image || '/avatar.png'} alt="" /></div></div>
-                                    <span className='text-sm font-medium'>{user.fullName}</span>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                    <button className="btn btn-primary w-full" onClick={handleAddMember} disabled={!selectedUserId}>Add Member</button>
-                </div>
-            </dialog>
 
             {showHistoryMsg && (
                 <div className="modal modal-open">

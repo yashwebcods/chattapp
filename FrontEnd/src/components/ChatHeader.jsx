@@ -1,7 +1,7 @@
 import React from 'react'
 import { useMessageStore } from '../store/useMessageStore'
 import { useAuthStore } from '../store/useAuthStore'
-import { X, MoreVertical, Trash2, CheckSquare, ArrowLeft } from 'lucide-react'
+import { X, MoreVertical, Trash2, CheckSquare, ArrowLeft, Users, UserPlus } from 'lucide-react'
 
 export const ChatHeader = () => {
   // Use selector to ensure re-renders when typing state changes
@@ -111,12 +111,35 @@ export const ChatHeader = () => {
 
           {/* User/Group info */}
           <div className="min-w-0 flex-1">
-            <h3 className="font-medium text-sm sm:text-base truncate">{displayName}</h3>
+            <h3 className="font-medium text-sm sm:text-base truncate max-w-[120px] sm:max-w-none">{displayName}</h3>
             <p className={`text-xs sm:text-sm truncate ${(isUserTyping || isGroupTyping) ? 'text-primary animate-pulse font-medium' : 'text-base-content/70'}`}>
               {statusText}
             </p>
           </div>
         </div>
+
+        {/* Group Actions (only for groups) */}
+        {selectedGroup && (
+          <div className="hidden lg:flex items-center gap-1">
+            <button
+              className='btn btn-ghost btn-sm gap-2'
+              onClick={() => document.getElementById('members_modal').showModal()}
+            >
+              <Users className='size-4' />
+              <span className='hidden xl:inline'>Members</span>
+            </button>
+
+            {(authUser.role === 'owner' || authUser.role === 'manager') && (
+              <button
+                className='btn btn-sm btn-ghost gap-2 text-primary'
+                onClick={() => document.getElementById('add_member_modal').showModal()}
+              >
+                <UserPlus className='size-4' />
+                <span className='hidden xl:inline'>Add Member</span>
+              </button>
+            )}
+          </div>
+        )}
 
         {/* Actions */}
         <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
@@ -145,6 +168,26 @@ export const ChatHeader = () => {
                   <span className="sm:hidden">Clear</span>
                 </button>
               </li>
+              {/* Mobile Group Actions */}
+              {selectedGroup && (
+                <>
+                  <div className="divider my-1 lg:hidden"></div>
+                  <li className="lg:hidden">
+                    <button onClick={() => document.getElementById('members_modal').showModal()}>
+                      <Users className="size-4" />
+                      <span>View Members</span>
+                    </button>
+                  </li>
+                  {(authUser.role === 'owner' || authUser.role === 'manager') && (
+                    <li className="lg:hidden">
+                      <button onClick={() => document.getElementById('add_member_modal').showModal()} className="text-primary">
+                        <UserPlus className="size-4" />
+                        <span>Add Member</span>
+                      </button>
+                    </li>
+                  )}
+                </>
+              )}
             </ul>
           </div>
 
