@@ -1,4 +1,4 @@
-import { Image, Send, X } from 'lucide-react'
+import { Image, Send, X, Pencil } from 'lucide-react'
 import React, { useRef, useState, useEffect } from 'react'
 import { useMessageStore } from '../store/useMessageStore'
 import { useAuthStore } from '../store/useAuthStore'
@@ -11,13 +11,32 @@ export const MessageInput = () => {
   const typingTimeoutRef = useRef(null)
   const isTypingRef = useRef(false)
 
-  const { sendMessages, selectedUser, selectedGroup, sendTyping, sendStopTyping, sendGroupTyping, sendGroupStopTyping } = useMessageStore()
+  const {
+    sendMessages,
+    selectedUser,
+    selectedGroup,
+    sendTyping,
+    sendStopTyping,
+    sendGroupTyping,
+    sendGroupStopTyping,
+    editingMessage,
+    setEditingMessage,
+    editMessage
+  } = useMessageStore()
   const { authUser } = useAuthStore()
+
+  // Populate input when editing a message
+  useEffect(() => {
+    if (editingMessage) {
+      setText(editingMessage.text);
+      // Focus the input
+    }
+  }, [editingMessage]);
 
   // Typing indicator logic
   useEffect(() => {
-    if (text.trim()) {
-      // User is typing
+    if (text.trim() && !editingMessage) {
+      // User is typing (only show when not editing)
       if (!isTypingRef.current) {
         isTypingRef.current = true;
         if (selectedUser) {
@@ -42,7 +61,7 @@ export const MessageInput = () => {
         }
       }, 2000);
     } else {
-      // Text is empty, stop typing immediately
+      // Text is empty or editing, stop typing immediately
       if (isTypingRef.current) {
         isTypingRef.current = false;
         if (selectedUser) {
@@ -59,7 +78,7 @@ export const MessageInput = () => {
         clearTimeout(typingTimeoutRef.current);
       }
     };
-  }, [text, selectedUser, selectedGroup, sendTyping, sendStopTyping, sendGroupTyping, sendGroupStopTyping, authUser]);
+  }, [text, selectedUser, selectedGroup, sendTyping, sendStopTyping, sendGroupTyping, sendGroupStopTyping, authUser, editingMessage]);
 
   const handleSendMessage = async (e) => {
     e.preventDefault()
@@ -75,10 +94,22 @@ export const MessageInput = () => {
       }
     }
 
-    // Store current values and clear input immediately
     const messageText = text.trim()
     const messageImage = imagePreview
 
+    // If editing, call editMessage instead
+    if (editingMessage) {
+      try {
+        await editMessage(editingMessage._id, messageText);
+        setEditingMessage(null);
+        setText('');
+      } catch (error) {
+        console.error('Failed to edit message:', error);
+      }
+      return;
+    }
+
+    // Store current values and clear input immediately
     setText('')
     setImagePreview(null)
     if (fileInput.current) fileInput.current.value = ''
@@ -97,6 +128,7 @@ export const MessageInput = () => {
       setImagePreview(messageImage)
     }
   }
+
   const handleImage = (e) => {
     const file = e.target.files[0];
     if (!file.type.startsWith('image/')) {
@@ -109,10 +141,17 @@ export const MessageInput = () => {
     }
     reader.readAsDataURL(file)
   }
+
   const removeImage = () => {
     setImagePreview(null)
     if (fileInput.current) fileInput.current.value = ''
   }
+
+  const cancelEdit = () => {
+    setEditingMessage(null);
+    setText('');
+  }
+
   return (
     <div className='w-full p-3 sm:p-4'>
       {/* Selected image Preview  */}
@@ -136,11 +175,27 @@ export const MessageInput = () => {
         </div>
       )}
 
+      {/* Editing Message Indicator */}
+      {editingMessage && (
+        <div className="mb-2 flex items-center justify-between bg-base-200 p-2 rounded-lg border-l-4 border-info">
+          <div className="flex items-center gap-2 overflow-hidden">
+            <Pencil className="size-3 text-info shrink-0" />
+            <div className="flex flex-col min-w-0">
+              <span className="text-[10px] font-bold text-info uppercase">Editing Message</span>
+              <span className="text-xs opacity-70 truncate">{editingMessage.text}</span>
+            </div>
+          </div>
+          <button onClick={cancelEdit} className="btn btn-ghost btn-xs btn-circle">
+            <X className="size-4" />
+          </button>
+        </div>
+      )}
+
       <form onSubmit={handleSendMessage}>
         <div className='flex-1 flex gap-2 items-center '>
           <input type="text"
             className='flex-1 input input-bordered rounded-lg input-xs sm:input-sm md:input-md'
-            placeholder='Type a message'
+            placeholder={editingMessage ? 'Edit your message...' : 'Type a message'}
             value={text}
             onChange={(e) => setText(e.target.value)}
           />
@@ -151,12 +206,15 @@ export const MessageInput = () => {
             className='hidden'
             onChange={handleImage} />
 
-          <button type='button' className={`hidden sm:flex btn btn-circle ${imagePreview ? "text-emerald-500" : "text-zinc-400"}`} onClick={() => fileInput.current?.click()
-          } >
-            <Image size={20} />
-          </button>
+          {!editingMessage && (
+            <button type='button' className={`hidden sm:flex btn btn-circle ${imagePreview ? "text-emerald-500" : "text-zinc-400"}`} onClick={() => fileInput.current?.click()
+            } >
+              <Image size={20} />
+            </button>
+          )}
+
           <button type='submit'
-            className='btn btn-circle btn-xs sm:btn-sm'
+            className={`btn btn-circle btn-xs sm:btn-sm ${editingMessage ? 'btn-info' : ''}`}
             disabled={!text.trim() && !imagePreview}
           >
             <Send size={20} />

@@ -11,7 +11,7 @@ import { axiosInstance } from '../lib/axios'
 function GroupChatPage() {
     const { groupId } = useParams()
     const navigate = useNavigate()
-    const { groups, getGroups, selectedGroup, setSelectedGroup, editMessage, deleteMessages } = useMessageStore()
+    const { groups, getGroups, selectedGroup, setSelectedGroup, editMessage, deleteMessages, setEditingMessage } = useMessageStore()
     const { authUser } = useAuthStore()
     const [groupMessages, setGroupMessages] = useState([])
     const [text, setText] = useState('')
@@ -25,8 +25,6 @@ function GroupChatPage() {
     const messageEndRef = useRef(null)
     const fileInputRef = useRef(null)
     const documentFileInputRef = useRef(null)
-    const [editingMsgId, setEditingMsgId] = useState(null)
-    const [editContent, setEditContent] = useState('')
 
     // Add this filteredMessages logic
     const filteredMessages = filterPending
@@ -251,24 +249,6 @@ function GroupChatPage() {
         }
     }
 
-    const handleUpdateMessage = async (messageId) => {
-        if (!editContent.trim()) return
-        try {
-            await editMessage(messageId, editContent)
-            setEditingMsgId(null)
-            setEditContent('')
-        } catch (error) {
-            console.error('Error updating message:', error)
-        }
-    }
-
-    useEffect(() => {
-        if (editingMsgId) {
-            const msg = groupMessages.find(m => m._id === editingMsgId)
-            if (msg) setEditContent(msg.text)
-        }
-    }, [editingMsgId, groupMessages])
-
     const handleAddMember = async () => {
         if (!selectedUserId) {
             toast.error('Please select a user');
@@ -424,7 +404,7 @@ function GroupChatPage() {
                                             {msg.senderId?._id === authUser._id && !msg.isDeleted && (
                                                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                                     <button
-                                                        onClick={() => setEditingMsgId(msg._id)}
+                                                        onClick={() => setEditingMessage(msg)}
                                                         className="btn btn-ghost btn-xs text-info p-0 size-5 min-h-0"
                                                         title="Edit message"
                                                     >
@@ -459,38 +439,11 @@ function GroupChatPage() {
                                                     </div>
                                                 </a>
                                             )}
-                                            {editingMsgId === msg._id ? (
-                                                <div className="flex flex-col gap-2 min-w-[200px]">
-                                                    <textarea
-                                                        className="textarea textarea-bordered textarea-sm w-full bg-base-100 text-base-content"
-                                                        value={editContent}
-                                                        onChange={(e) => setEditContent(e.target.value)}
-                                                        autoFocus
-                                                    />
-                                                    <div className="flex justify-end gap-2">
-                                                        <button
-                                                            className="btn btn-xs btn-ghost"
-                                                            onClick={() => setEditingMsgId(null)}
-                                                        >
-                                                            Cancel
-                                                        </button>
-                                                        <button
-                                                            className="btn btn-xs btn-primary"
-                                                            onClick={() => handleUpdateMessage(msg._id)}
-                                                        >
-                                                            Save
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            ) : (
-                                                <>
-                                                    {msg.text && <p>{msg.text}</p>}
-                                                    {msg.isEdited && (
-                                                        <span className="text-[10px] opacity-50 self-end mt-1 italic">
-                                                            edited
-                                                        </span>
-                                                    )}
-                                                </>
+                                            {msg.text && <p>{msg.text}</p>}
+                                            {msg.isEdited && (
+                                                <span className="text-[10px] opacity-50 self-end mt-1 italic">
+                                                    edited
+                                                </span>
                                             )}
                                         </div>
                                     </div>

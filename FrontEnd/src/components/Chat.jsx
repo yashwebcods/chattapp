@@ -10,25 +10,24 @@ import { Trash2, Pencil } from 'lucide-react';
 function Chat() {
   const {
     message,
+    getMessage,
+    getGroupMessages,
     isMessageLoding,
     selectedUser,
     selectedGroup,
-    getMessage,
-    subcribeToMessages,
-    unsubcribeToMessage,
-    getGroupMessages,
-    subscribeToGroupMessages,
-    selectedMessageIds,
     isSelectionMode,
+    selectedMessageIds,
     toggleMessageSelection,
     deleteMessages,
+    subcribeToMessages,
+    unsubcribeToMessage,
+    subscribeToGroupMessages,
     unsubscribeFromGroupMessages,
-    editMessage
+    editMessage,
+    setEditingMessage,
   } = useMessageStore();
 
   const { authUser } = useAuthStore();
-  const [editingMsgId, setEditingMsgId] = React.useState(null);
-  const [editContent, setEditContent] = React.useState('');
 
   const messageEndRef = useRef(null);
 
@@ -60,24 +59,6 @@ function Chat() {
       await deleteMessages(selectedMessageIds);
     }
   };
-
-  const handleUpdateMessage = async (messageId) => {
-    if (!editContent.trim()) return;
-    try {
-      await editMessage(messageId, editContent);
-      setEditingMsgId(null);
-      setEditContent('');
-    } catch (error) {
-      console.error('Error updating message:', error);
-    }
-  };
-
-  useEffect(() => {
-    if (editingMsgId) {
-      const msg = message.find((m) => m._id === editingMsgId);
-      if (msg) setEditContent(msg.text);
-    }
-  }, [editingMsgId, message]);
 
   if (isMessageLoding) {
     return (
@@ -168,7 +149,7 @@ function Chat() {
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              setEditingMsgId(v._id);
+                              setEditingMessage(v);
                             }}
                             className='btn btn-ghost btn-xs text-info p-0 size-5 min-h-0'
                             title='Edit message'
@@ -212,45 +193,11 @@ function Chat() {
                                 alt="Message content"
                               />
                             )}
-                            {editingMsgId === v._id ? (
-                              <div className='flex flex-col gap-2 min-w-[150px] sm:min-w-[200px]'>
-                                <textarea
-                                  className='textarea textarea-bordered textarea-xs sm:textarea-sm w-full bg-base-100 text-base-content'
-                                  value={editContent}
-                                  onChange={(e) => setEditContent(e.target.value)}
-                                  autoFocus
-                                  onClick={(e) => e.stopPropagation()}
-                                />
-                                <div className='flex justify-end gap-2'>
-                                  <button
-                                    className='btn btn-[10px] h-6 min-h-0 btn-ghost'
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setEditingMsgId(null);
-                                    }}
-                                  >
-                                    Cancel
-                                  </button>
-                                  <button
-                                    className='btn btn-[10px] h-6 min-h-0 btn-primary'
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleUpdateMessage(v._id);
-                                    }}
-                                  >
-                                    Save
-                                  </button>
-                                </div>
-                              </div>
-                            ) : (
-                              <>
-                                {v.text && <p>{v.text}</p>}
-                                {v.isEdited && (
-                                  <span className='text-[10px] opacity-50 self-end mt-1 italic'>
-                                    edited
-                                  </span>
-                                )}
-                              </>
+                            {v.text && <p>{v.text}</p>}
+                            {v.isEdited && (
+                              <span className='text-[10px] opacity-50 self-end mt-1 italic'>
+                                edited
+                              </span>
                             )}
                           </>
                         )}

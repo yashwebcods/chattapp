@@ -17,6 +17,8 @@ export const useMessageStore = create(persist((set, get) => ({
     isOn: false,
     unreadCounts: {}, // { userId: count, groupId: count }
     sellerIndex: null,
+    editingMessage: null, // The message being edited
+    setEditingMessage: (msg) => set({ editingMessage: msg }),
     setGroup: (value) => set({ isOn: value }),
 
     getUsers: async () => {
