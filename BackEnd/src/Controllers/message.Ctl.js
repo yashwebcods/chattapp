@@ -160,32 +160,41 @@ export const sendMessage = async (req, res) => {
         let imageUrl = null;
         let fileUrl = null;
         let messageType = 'text';
+        let imageResourceType = null;
+        let fileResourceType = null;
 
         // Upload image if provided
         if (image) {
-            const uploadRes = await cloudnairy.uploader.upload(image, {
-                resource_type: 'auto', // Changed to auto for better handling
-                folder: 'chat_images'
-            });
-            imageUrl = uploadRes.secure_url;
-            messageType = 'image';
-            // Store the detected resource type
-            var imageResourceType = uploadRes.resource_type;
+            try {
+                console.log('🖼️ Uploading image to Cloudinary...');
+                const uploadRes = await cloudnairy.uploader.upload(image, {
+                    resource_type: 'auto',
+                    folder: 'chat_images'
+                });
+                imageUrl = uploadRes.secure_url;
+                messageType = 'image';
+                imageResourceType = uploadRes.resource_type;
+                console.log('✅ Image uploaded:', { url: imageUrl, type: imageResourceType });
+            } catch (err) {
+                console.error('Image upload error:', err);
+                return res.status(400).json({ error: 'Failed to upload image' });
+            }
         }
 
         // Upload file if provided (PDFs, documents, etc.)
         if (file) {
             try {
+                console.log('📄 Uploading file to Cloudinary...');
                 // Use 'auto' to correctly detect PDF, ZIP, etc.
                 const uploadRes = await cloudnairy.uploader.upload(file, {
                     resource_type: 'auto',
                     folder: 'chat_files',
-                    chunk_size: 6000000,
-                    format: fileName ? fileName.split('.').pop() : undefined
+                    chunk_size: 6000000
                 });
                 fileUrl = uploadRes.secure_url;
                 messageType = 'file';
-                var fileResourceType = uploadRes.resource_type;
+                fileResourceType = uploadRes.resource_type;
+                console.log('✅ File uploaded:', { url: fileUrl, type: fileResourceType });
             } catch (uploadError) {
                 console.error('File upload error:', uploadError);
                 return res.status(400).json({
@@ -194,12 +203,10 @@ export const sendMessage = async (req, res) => {
             }
         }
 
-        console.log('📤 Creating message with data:');
-        console.log('  - text:', text);
-        console.log('  - imageUrl:', imageUrl);
-        console.log('  - fileUrl:', fileUrl);
-        console.log('  - fileName:', fileName);
-        console.log('  - messageType:', messageType);
+        console.log('📤 Creating message with data:', {
+            text, imageUrl, fileUrl, fileName, messageType,
+            resType: imageResourceType || fileResourceType
+        });
 
         // Create message
         const newMessage = new Message({
@@ -453,12 +460,14 @@ export const clearChat = async (req, res) => {
         // Delete files from Cloudinary
         for (const msg of messages) {
             if (msg.image) {
-                const publicId = extractPublicId(msg.image, 'image');
-                if (publicId) await cloudnairy.uploader.destroy(publicId, { resource_type: 'image' });
+                const resType = msg.cloudinaryResourceType || 'image';
+                const publicId = extractPublicId(msg.image, resType);
+                if (publicId) await cloudnairy.uploader.destroy(publicId, { resource_type: resType });
             }
             if (msg.fileUrl) {
-                const publicId = extractPublicId(msg.fileUrl, 'raw');
-                if (publicId) await cloudnairy.uploader.destroy(publicId, { resource_type: 'raw' });
+                const resType = msg.cloudinaryResourceType || 'raw';
+                const publicId = extractPublicId(msg.fileUrl, resType);
+                if (publicId) await cloudnairy.uploader.destroy(publicId, { resource_type: resType });
             }
         }
 
@@ -513,12 +522,14 @@ export const clearGroupChat = async (req, res) => {
         // Delete files from Cloudinary
         for (const msg of messages) {
             if (msg.image) {
-                const publicId = extractPublicId(msg.image, 'image');
-                if (publicId) await cloudnairy.uploader.destroy(publicId, { resource_type: 'image' });
+                const resType = msg.cloudinaryResourceType || 'image';
+                const publicId = extractPublicId(msg.image, resType);
+                if (publicId) await cloudnairy.uploader.destroy(publicId, { resource_type: resType });
             }
             if (msg.fileUrl) {
-                const publicId = extractPublicId(msg.fileUrl, 'raw');
-                if (publicId) await cloudnairy.uploader.destroy(publicId, { resource_type: 'raw' });
+                const resType = msg.cloudinaryResourceType || 'raw';
+                const publicId = extractPublicId(msg.fileUrl, resType);
+                if (publicId) await cloudnairy.uploader.destroy(publicId, { resource_type: resType });
             }
         }
 
