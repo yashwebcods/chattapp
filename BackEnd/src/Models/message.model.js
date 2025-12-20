@@ -53,7 +53,16 @@ const messageSchema = mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
         default: null
-    }
+    },
+    // // Edit tracking
+    // isEdited: {
+    //     type: Boolean,
+    //     default: false
+    // },
+    // editedAt: {
+    //     type: Date,
+    //     default: null
+    // }
 }, {
     timestamps: true
 })
