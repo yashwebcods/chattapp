@@ -184,17 +184,20 @@ export const sendMessage = async (req, res) => {
         // Upload file if provided (PDFs, documents, etc.)
         if (file) {
             try {
-                console.log('📄 Uploading file to Cloudinary...');
-                // Use 'auto' to correctly detect PDF, ZIP, etc.
+                console.log('📄 Uploading file as raw to Cloudinary...');
+                // Use 'raw' as requested to ensure storage in /raw/upload/
                 const uploadRes = await cloudnairy.uploader.upload(file, {
-                    resource_type: 'auto',
+                    resource_type: 'raw',
                     folder: 'chat_files',
                     chunk_size: 6000000
                 });
-                fileUrl = uploadRes.secure_url;
+
+                // Append download parameter to the secure URL
+                fileUrl = `${uploadRes.secure_url}?response-content-disposition=attachment`;
+
                 messageType = 'file';
-                fileResourceType = uploadRes.resource_type;
-                console.log('✅ File uploaded:', { url: fileUrl, type: fileResourceType });
+                fileResourceType = 'raw';
+                console.log('✅ File uploaded (raw):', { url: fileUrl });
             } catch (uploadError) {
                 console.error('File upload error:', uploadError);
                 return res.status(400).json({
@@ -345,24 +348,28 @@ export const sendMessage = async (req, res) => {
 ============================================================ */
 const extractPublicId = (url, resourceType = 'image') => {
     try {
-        const parts = url.split('/');
+        if (!url) return null;
+
+        // Remove query parameters if any (important for ?response-content-disposition=attachment)
+        const baseUrl = url.split('?')[0];
+
+        const parts = baseUrl.split('/');
         const filenameWithExt = parts[parts.length - 1];
-        const folder = parts[parts.length - 2]; // Assuming structure like .../folder/filename.ext
+        const folder = parts[parts.length - 2];
 
         let filename = filenameWithExt;
 
-        // For images, we remove the extension from the public ID
-        // For raw files (documents), the public ID usually includes the extension
+        // For images/videos, we remove the extension from the public ID
+        // For raw files, the public ID usually includes the extension
         if (resourceType === 'image' || resourceType === 'video') {
             filename = filenameWithExt.split('.')[0];
         }
 
-        // If there's a folder (e.g., chat_images or chat_files)
+        // Handle folders
         if (folder === 'chat_images' || folder === 'chat_files') {
             return `${folder}/${filename}`;
         }
 
-        // Fallback for root files
         return filename;
     } catch (error) {
         console.error('Error extracting public ID:', error);

@@ -7,17 +7,31 @@ export const DateFormated = (date) => {
 }
 
 /**
- * Transforms a Cloudinary URL to force download by adding the 'fl_attachment' flag.
- * If verified as a Cloudinary URL, it inserts 'fl_attachment' into the upload path.
+ * Transforms a Cloudinary URL to force download.
+ * - For images/videos: Injects 'fl_attachment' flag.
+ * - For raw files: Ensures 'response-content-disposition=attachment' query param is present.
  */
 export const getDownloadUrl = (url) => {
     if (!url) return "";
 
     // Check if it's a Cloudinary URL
-    if (url.includes("cloudinary.com") && url.includes("/upload/")) {
-        // Find the index of "/upload/" and insert "fl_attachment/" after it
-        // Cloudinary transformation flags are added right after /upload/
-        return url.replace("/upload/", "/upload/fl_attachment/");
+    if (url.includes("cloudinary.com")) {
+        // FOR IMAGES/VIDEOS (stored in /image/upload or /video/upload)
+        if (url.includes("/image/upload/") || url.includes("/video/upload/")) {
+            if (!url.includes("fl_attachment")) {
+                return url.replace("/upload/", "/upload/fl_attachment/");
+            }
+            return url;
+        }
+
+        // FOR RAW FILES (stored in /raw/upload/)
+        if (url.includes("/raw/upload/")) {
+            if (!url.includes("response-content-disposition=attachment")) {
+                const separator = url.includes("?") ? "&" : "?";
+                return `${url}${separator}response-content-disposition=attachment`;
+            }
+            return url;
+        }
     }
 
     return url;
