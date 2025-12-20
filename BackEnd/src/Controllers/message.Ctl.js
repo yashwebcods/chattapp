@@ -475,6 +475,12 @@ export const editMessage = async (req, res) => {
         }
 
         // Update the message
+        // Record history
+        message.editHistory.push({
+            text: message.text,
+            editedAt: message.editedAt || message.createdAt
+        });
+
         message.text = text.trim();
         message.isEdited = true;
         message.editedAt = new Date();

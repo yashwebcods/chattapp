@@ -54,15 +54,24 @@ const messageSchema = mongoose.Schema({
         ref: 'User',
         default: null
     },
-    // // Edit tracking
-    // isEdited: {
-    //     type: Boolean,
-    //     default: false
-    // },
-    // editedAt: {
-    //     type: Date,
-    //     default: null
-    // }
+    // Edit tracking
+    isEdited: {
+        type: Boolean,
+        default: false
+    },
+    editedAt: {
+        type: Date,
+        default: null
+    },
+    editHistory: [
+        {
+            text: String,
+            editedAt: {
+                type: Date,
+                default: Date.now
+            }
+        }
+    ]
 }, {
     timestamps: true
 })
