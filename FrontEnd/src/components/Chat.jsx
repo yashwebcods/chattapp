@@ -5,7 +5,7 @@ import { MessageInput } from './MessageInput';
 import ChatSkeleton from './Skeletons/ChatSkeleton';
 import { useAuthStore } from '../store/useAuthStore';
 import { DateFormated } from '../lib/utills';
-import { Trash2, Pencil, Clock, X, Copy, Share2 } from 'lucide-react';
+import { Trash2, Pencil, Clock, X, Copy, Share2, Download, Paperclip } from 'lucide-react';
 import toast from 'react-hot-toast';
 import ForwardModal from './ForwardModal';
 
@@ -222,6 +222,20 @@ function Chat() {
                                 className='max-w-[150px] sm:max-w-[200px] rounded mb-2'
                                 alt="Message content"
                               />
+                            )}
+                            {v.fileUrl && (
+                              <div className="mb-2">
+                                <a
+                                  href={v.fileUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="flex items-center gap-2 p-2 rounded-lg bg-base-200 hover:bg-base-300 transition-colors border border-base-300 group/file w-fit max-w-full"
+                                >
+                                  <Paperclip className="size-4 text-primary" />
+                                  <span className="text-xs font-medium truncate max-w-[150px]">{v.fileName || 'Attachment'}</span>
+                                  <Download className="size-3 opacity-0 group-hover/file:opacity-60 transition-opacity" />
+                                </a>
+                              </div>
                             )}
                             {v.text && <p>{v.text}</p>}
                             {v.isEdited && (

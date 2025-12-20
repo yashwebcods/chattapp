@@ -136,6 +136,8 @@ export const useMessageStore = create(persist((set, get) => ({
         const messageData = {
             text: msg.text || "",
             image: msg.image || null,
+            file: msg.fileUrl || null,
+            fileName: msg.fileName || null,
         };
 
         try {

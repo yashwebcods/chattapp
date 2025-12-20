@@ -1,4 +1,4 @@
-import { Image, Send, X, Pencil } from 'lucide-react'
+import { Image, Send, X, Pencil, Paperclip, File } from 'lucide-react'
 import React, { useRef, useState, useEffect } from 'react'
 import { useMessageStore } from '../store/useMessageStore'
 import { useAuthStore } from '../store/useAuthStore'
@@ -7,7 +7,10 @@ import toast from 'react-hot-toast'
 export const MessageInput = () => {
   const [text, setText] = useState("")
   const [imagePreview, setImagePreview] = useState(null)
+  const [filePreview, setFilePreview] = useState(null)
+  const [fileName, setFileName] = useState('')
   const fileInput = useRef(null)
+  const docInput = useRef(null)
   const typingTimeoutRef = useRef(null)
   const isTypingRef = useRef(false)
 
@@ -29,14 +32,12 @@ export const MessageInput = () => {
   useEffect(() => {
     if (editingMessage) {
       setText(editingMessage.text);
-      // Focus the input
     }
   }, [editingMessage]);
 
   // Typing indicator logic
   useEffect(() => {
     if (text.trim() && !editingMessage) {
-      // User is typing (only show when not editing)
       if (!isTypingRef.current) {
         isTypingRef.current = true;
         if (selectedUser) {
@@ -46,12 +47,10 @@ export const MessageInput = () => {
         }
       }
 
-      // Clear previous timeout
       if (typingTimeoutRef.current) {
         clearTimeout(typingTimeoutRef.current);
       }
 
-      // Set new timeout to stop typing after 2 seconds of inactivity
       typingTimeoutRef.current = setTimeout(() => {
         isTypingRef.current = false;
         if (selectedUser) {
@@ -61,7 +60,6 @@ export const MessageInput = () => {
         }
       }, 2000);
     } else {
-      // Text is empty or editing, stop typing immediately
       if (isTypingRef.current) {
         isTypingRef.current = false;
         if (selectedUser) {
@@ -72,7 +70,6 @@ export const MessageInput = () => {
       }
     }
 
-    // Cleanup on unmount
     return () => {
       if (typingTimeoutRef.current) {
         clearTimeout(typingTimeoutRef.current);
@@ -82,9 +79,8 @@ export const MessageInput = () => {
 
   const handleSendMessage = async (e) => {
     e.preventDefault()
-    if (!text.trim() && !imagePreview) return
+    if (!text.trim() && !imagePreview && !filePreview) return
 
-    // Stop typing indicator immediately
     if (isTypingRef.current) {
       isTypingRef.current = false;
       if (selectedUser) {
@@ -96,8 +92,9 @@ export const MessageInput = () => {
 
     const messageText = text.trim()
     const messageImage = imagePreview
+    const messageFile = filePreview
+    const messageFileName = fileName
 
-    // If editing, call editMessage instead
     if (editingMessage) {
       try {
         await editMessage(editingMessage._id, messageText);
@@ -109,35 +106,54 @@ export const MessageInput = () => {
       return;
     }
 
-    // Store current values and clear input immediately
     setText('')
     setImagePreview(null)
+    setFilePreview(null)
+    setFileName('')
     if (fileInput.current) fileInput.current.value = ''
+    if (docInput.current) docInput.current.value = ''
 
     try {
-      console.log('Sending message:', messageText, messageImage ? 'with image' : 'text only')
       await sendMessages({
         text: messageText,
         image: messageImage,
+        file: messageFile,
+        fileName: messageFileName
       })
-      console.log('Message sent successfully')
     } catch (error) {
       console.error('Failed to send message:', error)
-      // Restore input values on error
       setText(messageText)
       setImagePreview(messageImage)
+      setFilePreview(messageFile)
+      setFileName(messageFileName)
     }
   }
 
   const handleImage = (e) => {
     const file = e.target.files[0];
+    if (!file) return;
     if (!file.type.startsWith('image/')) {
-      toast.error('pleace select image')
+      toast.error('Please select an image')
       return;
     }
     const reader = new FileReader()
+    reader.onload = () => setImagePreview(reader.result)
+    reader.readAsDataURL(file)
+  }
+
+  const handleFile = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('File size must be less than 10MB');
+      return;
+    }
+
+    const reader = new FileReader()
     reader.onload = () => {
-      setImagePreview(reader.result)
+      setFilePreview(reader.result)
+      setFileName(file.name)
     }
     reader.readAsDataURL(file)
   }
@@ -147,6 +163,12 @@ export const MessageInput = () => {
     if (fileInput.current) fileInput.current.value = ''
   }
 
+  const removeFile = () => {
+    setFilePreview(null)
+    setFileName('')
+    if (docInput.current) docInput.current.value = ''
+  }
+
   const cancelEdit = () => {
     setEditingMessage(null);
     setText('');
@@ -154,7 +176,6 @@ export const MessageInput = () => {
 
   return (
     <div className='w-full p-3 sm:p-4'>
-      {/* Selected image Preview  */}
       {imagePreview && (
         <div className="mb-3 flex items-center gap-2">
           <div className="relative">
@@ -175,7 +196,20 @@ export const MessageInput = () => {
         </div>
       )}
 
-      {/* Editing Message Indicator */}
+      {filePreview && (
+        <div className="mb-3 flex items-center gap-2 p-3 bg-base-200 rounded-lg max-w-fit border border-base-300">
+          <File className="size-5 text-primary" />
+          <span className="text-xs font-medium truncate max-w-[150px]">{fileName}</span>
+          <button
+            onClick={removeFile}
+            className="btn btn-ghost btn-xs btn-circle"
+            type="button"
+          >
+            <X className="size-3" />
+          </button>
+        </div>
+      )}
+
       {editingMessage && (
         <div className="mb-2 flex items-center justify-between bg-base-200 p-2 rounded-lg border-l-4 border-info">
           <div className="flex items-center gap-2 overflow-hidden">
@@ -199,25 +233,32 @@ export const MessageInput = () => {
             value={text}
             onChange={(e) => setText(e.target.value)}
           />
-          <input
-            type='file'
-            ref={fileInput}
-            accept='image?*'
-            className='hidden'
-            onChange={handleImage} />
+
+          <input type='file' ref={fileInput} accept='image/*' className='hidden' onChange={handleImage} />
+          <input type='file' ref={docInput} className='hidden' onChange={handleFile} />
 
           {!editingMessage && (
-            <button type='button'
-              className={`flex btn btn-circle btn-sm sm:btn-md ${imagePreview ? "text-emerald-500" : "text-zinc-400"}`}
-              onClick={() => fileInput.current?.click()}
-            >
-              <Image className="size-5" />
-            </button>
+            <>
+              <button type='button'
+                className={`btn btn-ghost btn-circle btn-sm sm:btn-md ${filePreview ? "text-primary" : "text-zinc-400"}`}
+                onClick={() => docInput.current?.click()}
+                title="Attach file"
+              >
+                <Paperclip className="size-5" />
+              </button>
+              <button type='button'
+                className={`btn btn-ghost btn-circle btn-sm sm:btn-md ${imagePreview ? "text-primary" : "text-zinc-400"}`}
+                onClick={() => fileInput.current?.click()}
+                title="Attach image"
+              >
+                <Image className="size-5" />
+              </button>
+            </>
           )}
 
           <button type='submit'
-            className={`btn btn-circle btn-sm sm:btn-md ${editingMessage ? 'btn-info' : ''}`}
-            disabled={!text.trim() && !imagePreview}
+            className={`btn btn-circle btn-sm sm:btn-md ${editingMessage ? 'btn-info' : 'btn-primary'}`}
+            disabled={!text.trim() && !imagePreview && !filePreview}
           >
             <Send className="size-5" />
           </button>
