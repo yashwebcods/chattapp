@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react'
 import { useState } from 'react'
 import { X, Loader2, MessageCircle } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import { useMessageStore } from '../store/useMessageStore'
 import { useSellerStore } from '../store/useSellerStore'
 
@@ -8,8 +9,7 @@ function Group() {
   const [close, setClose] = useState(false)
   const [creatingGroupId, setCreatingGroupId] = useState(null)
   const [filter, setFilter] = useState('all') // 'all', 'withGroup', 'withoutGroup'
-  const { setGroup, createGroup, setSelectedGroup, groups, getGroups } = useMessageStore()
-  const { Sellers, getSeller } = useSellerStore()
+  const navigate = useNavigate()
 
   useEffect(() => {
     getSeller()
@@ -30,8 +30,8 @@ function Group() {
     // Find the group for this seller
     const group = groups.find(g => g.sellerId._id === seller._id)
     if (group) {
-      setSelectedGroup(group)
-      setGroup(false) // Close the group creation modal
+      navigate(`/group/${group._id}`)
+      setGroup(false) // Close the group creation view
     }
   }
 

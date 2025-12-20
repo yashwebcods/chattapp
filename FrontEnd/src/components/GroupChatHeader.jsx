@@ -37,7 +37,7 @@ const GroupChatHeader = ({ selectedGroup, onAddMember }) => {
                 <span className='hidden md:inline'>Members</span>
             </button>
 
-            {(authUser.role === 'owner' || authUser.role === 'manager') && (
+            {(authUser?.role === 'owner' || authUser?.role === 'manager') && (
                 <button
                     className='btn btn-sm btn-primary gap-2'
                     onClick={onAddMember}

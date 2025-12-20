@@ -18,7 +18,7 @@ export const ChatHeader = () => {
   const typingUsers = useMessageStore((state) => state.typingUsers)
   const groupTypingData = useMessageStore((state) => state.groupTypingData)
 
-  const { onlineUsers } = useAuthStore()
+  const { onlineUsers, authUser } = useAuthStore()
 
   const handleClearChat = async () => {
     if (selectedUser) {
@@ -129,7 +129,7 @@ export const ChatHeader = () => {
               <span className='hidden xl:inline'>Members</span>
             </button>
 
-            {(authUser.role === 'owner' || authUser.role === 'manager') && (
+            {(authUser?.role === 'owner' || authUser?.role === 'manager') && (
               <button
                 className='btn btn-sm btn-ghost gap-2 text-primary'
                 onClick={() => document.getElementById('add_member_modal').showModal()}
@@ -178,7 +178,7 @@ export const ChatHeader = () => {
                       <span>View Members</span>
                     </button>
                   </li>
-                  {(authUser.role === 'owner' || authUser.role === 'manager') && (
+                  {(authUser?.role === 'owner' || authUser?.role === 'manager') && (
                     <li className="lg:hidden">
                       <button onClick={() => document.getElementById('add_member_modal').showModal()} className="text-primary">
                         <UserPlus className="size-4" />
