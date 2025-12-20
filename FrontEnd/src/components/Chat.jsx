@@ -226,7 +226,7 @@ function Chat() {
                                   href={v.fileUrl}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="flex items-center gap-2 p-2 rounded-lg bg-base-200 office-300 transition-colors border border-base-300 group/file w-fit max-w-full"
+                                  className="flex items-center gap-2 p-2 rounded-lg bg-base-200 hover:bg-base-300 transition-colors border border-base-300 group/file w-fit max-w-full"
                                 >
                                   <Paperclip className="size-4 text-primary" />
                                   <span className="text-xs font-medium truncate max-w-[150px]">{v.fileName || 'Attachment'}</span>

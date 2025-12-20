@@ -360,13 +360,12 @@ export const useMessageStore = create(persist((set, get) => ({
             const { message, selectedUser, selectedGroup } = get();
 
             // Handle DM seen
-            if (fromUser && selectedUser && selectedUser._id === fromUser) {
+            if (fromUser && selectedUser && seenBy === selectedUser._id) {
                 set({
                     message: message.map(msg => {
-                        const isToReceiver = (msg.receiverId === seenBy || msg.receiverId?._id === seenBy);
                         const alreadySeen = msg.seenBy?.some(u => (u === seenBy) || (u._id === seenBy));
 
-                        if (isToReceiver && !alreadySeen) {
+                        if (!alreadySeen) {
                             return { ...msg, seenBy: [...(msg.seenBy || []), { _id: seenBy, fullName: seenByName }] };
                         }
                         return msg;
