@@ -102,11 +102,14 @@ export const useMessageStore = create(persist((set, get) => ({
             // Add temporary message to state immediately
             set({ message: [...get().message, tempMessage] });
 
+            const targetUserId = selectedUser?._id;
+            const targetGroupId = selectedGroup?._id;
+
             const res = await axiosInstance.post(endpoint, data);
 
             // Replace temporary message with real server message
             setTimeout(() => {
-                const { message, users, groups, selectedUser, selectedGroup } = get();
+                const { message, users, groups } = get();
                 set({
                     message: message.map(msg =>
                         msg._id === tempMessage._id ? res.data : msg
@@ -114,12 +117,18 @@ export const useMessageStore = create(persist((set, get) => ({
                 });
 
                 // Move current user/group to top of sidebar
-                if (selectedUser) {
-                    const otherUsers = users.filter(u => u._id !== selectedUser._id);
-                    set({ users: [selectedUser, ...otherUsers] });
-                } else if (selectedGroup) {
-                    const otherGroups = groups.filter(g => g._id !== selectedGroup._id);
-                    set({ groups: [selectedGroup, ...otherGroups] });
+                if (targetUserId) {
+                    const user = users.find(u => u._id === targetUserId);
+                    if (user) {
+                        const otherUsers = users.filter(u => u._id !== targetUserId);
+                        set({ users: [user, ...otherUsers] });
+                    }
+                } else if (targetGroupId) {
+                    const group = groups.find(g => g._id === targetGroupId);
+                    if (group) {
+                        const otherGroups = groups.filter(g => g._id !== targetGroupId);
+                        set({ groups: [group, ...otherGroups] });
+                    }
                 }
             }, 100);
 
