@@ -106,11 +106,21 @@ export const useMessageStore = create(persist((set, get) => ({
 
             // Replace temporary message with real server message
             setTimeout(() => {
+                const { message, users, groups, selectedUser, selectedGroup } = get();
                 set({
-                    message: get().message.map(msg =>
+                    message: message.map(msg =>
                         msg._id === tempMessage._id ? res.data : msg
                     )
                 });
+
+                // Move current user/group to top of sidebar
+                if (selectedUser) {
+                    const otherUsers = users.filter(u => u._id !== selectedUser._id);
+                    set({ users: [selectedUser, ...otherUsers] });
+                } else if (selectedGroup) {
+                    const otherGroups = groups.filter(g => g._id !== selectedGroup._id);
+                    set({ groups: [selectedGroup, ...otherGroups] });
+                }
             }, 100);
 
             console.log('Message sent successfully');
@@ -246,6 +256,14 @@ export const useMessageStore = create(persist((set, get) => ({
                     };
                     set({ unreadCounts: newUnreadCounts });
                 }
+
+                // Move sender to top of users list
+                const { users } = get();
+                const sender = users.find(u => u._id === sIdString);
+                if (sender) {
+                    const otherUsers = users.filter(u => u._id !== sIdString);
+                    set({ users: [sender, ...otherUsers] });
+                }
             }
         });
     },
@@ -357,6 +375,15 @@ export const useMessageStore = create(persist((set, get) => ({
                     [gIdString]: (currentCounts[gIdString] || 0) + 1
                 };
                 set({ unreadCounts: newUnreadCounts });
+            }
+
+            // Move group to top of groups list
+            let groupId = newMessage.groupId?._id || newMessage.groupId;
+            const gIdStr = groupId?.toString();
+            const group = groups.find(g => g._id === gIdStr);
+            if (group) {
+                const otherGroups = groups.filter(g => g._id !== gIdStr);
+                set({ groups: [group, ...otherGroups] });
             }
         });
 
