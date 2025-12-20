@@ -9,6 +9,8 @@ function Group() {
   const [close, setClose] = useState(false)
   const [creatingGroupId, setCreatingGroupId] = useState(null)
   const [filter, setFilter] = useState('all') // 'all', 'withGroup', 'withoutGroup'
+  const { setGroup, createGroup, groups, getGroups } = useMessageStore()
+  const { Sellers, getSeller } = useSellerStore()
   const navigate = useNavigate()
 
   useEffect(() => {
