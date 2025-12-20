@@ -201,32 +201,14 @@ export const useMessageStore = create(persist((set, get) => ({
 
         socket.on("newMessage", (newMessage) => {
             console.log("📨 newMessage event received:", newMessage);
-            const { selectedUser, message, unreadCounts } = get();
+            const { selectedUser, message } = get();
             const authUser = useAuthStore.getState().authUser;
 
-            console.log("📊 Current state:", {
-                selectedUser: selectedUser?.fullName,
-                selectedUserId: selectedUser?._id,
-                messageCount: message.length,
-                unreadCounts: unreadCounts
-            });
-
-            // Check if this is my own message (skip it, already shown via optimistic UI)
+            // Check if this is my own message
             const isMyMessage = newMessage.senderId === authUser._id ||
                 newMessage.senderId?._id === authUser._id;
 
-            console.log("🔍 Message analysis:", {
-                isMyMessage,
-                senderId: newMessage.senderId?._id || newMessage.senderId,
-                receiverId: newMessage.receiverId?._id || newMessage.receiverId,
-                authUserId: authUser._id
-            });
-
-            // If this is my own message, skip it (already shown via optimistic update)
-            if (isMyMessage) {
-                console.log("⏭️ Skipping own message (already shown via optimistic UI)");
-                return;
-            }
+            if (isMyMessage) return;
 
             // Check if this message is from the currently selected user
             const isFromSelectedUser = selectedUser && (
@@ -236,32 +218,34 @@ export const useMessageStore = create(persist((set, get) => ({
 
             // If viewing this chat, add message to current conversation
             if (isFromSelectedUser && !message.some(msg => msg._id === newMessage._id)) {
-                console.log("➕ Adding message to current chat (from selected user)");
                 set({ message: [...message, newMessage] });
             } else {
                 // Not viewing this chat - show notification and increment unread count
                 const senderName = newMessage.senderId?.fullName || 'Someone';
-                console.log("🔔 Showing notification and incrementing unread count for:", senderName);
                 toast.success(`New message from ${senderName}`, { duration: 2000 });
 
                 // Increment unread count for this user
                 let senderId = newMessage.senderId?._id || newMessage.senderId;
-                // Ensure senderId is a string to match Sidebar keys
                 if (senderId) {
-                    const sIdString = typeof senderId === 'string' ? senderId : senderId.toString();
+                    const sIdString = senderId.toString();
                     const currentCounts = get().unreadCounts || {};
-                    const newUnreadCounts = {
-                        ...currentCounts,
-                        [sIdString]: (currentCounts[sIdString] || 0) + 1
-                    };
-                    set({ unreadCounts: newUnreadCounts });
+                    set({
+                        unreadCounts: {
+                            ...currentCounts,
+                            [sIdString]: (currentCounts[sIdString] || 0) + 1
+                        }
+                    });
                 }
+            }
 
-                // Move sender to top of users list
+            // Move sender to top of sidebar
+            let sId = newMessage.senderId?._id || newMessage.senderId;
+            if (sId) {
+                const sIdStr = sId.toString();
                 const { users } = get();
-                const sender = users.find(u => u._id === sIdString);
+                const sender = users.find(u => u._id === sIdStr);
                 if (sender) {
-                    const otherUsers = users.filter(u => u._id !== sIdString);
+                    const otherUsers = users.filter(u => u._id !== sIdStr);
                     set({ users: [sender, ...otherUsers] });
                 }
             }
@@ -338,52 +322,49 @@ export const useMessageStore = create(persist((set, get) => ({
             const isMyMessage = newMessage.senderId === authUser._id ||
                 newMessage.senderId?._id === authUser._id;
 
-            console.log("📤 Is my message:", isMyMessage);
+            if (!(isMyMessage || isCurrentGroup)) {
+                // Get group name - format it like in GroupsListPage
+                let groupName = 'a group';
+                if (newMessage.groupId?.sellerId?.companyName && newMessage.groupId?.sellerIndex !== undefined) {
+                    groupName = `${Math.abs(newMessage.groupId.sellerIndex + 1)} - ${newMessage.groupId.sellerId.companyName}`;
+                } else if (newMessage.groupId?.name) {
+                    groupName = newMessage.groupId.name;
+                } else {
+                    const group = groups.find(g => g._id === newMessage.groupId);
+                    if (group?.sellerId?.companyName && group?.sellerIndex !== undefined) {
+                        groupName = `${Math.abs(group.sellerIndex + 1)} - ${group.sellerId.companyName}`;
+                    } else if (group?.name) {
+                        groupName = group.name;
+                    }
+                }
 
-            if (isMyMessage || isCurrentGroup) {
-                console.log("⏭️ Skipping notification (own message or current group)");
-                return;
-            }
+                // Show notification with group name (2 second duration)
+                console.log("🔔 Showing group notification:", groupName);
+                toast.success(`New message from ${groupName}`, { duration: 2000 });
+                console.log(`New message from ${groupName}`);
 
-            // Get group name - format it like in GroupsListPage
-            let groupName = 'a group';
-            if (newMessage.groupId?.sellerId?.companyName && newMessage.groupId?.sellerIndex !== undefined) {
-                groupName = `${Math.abs(newMessage.groupId.sellerIndex + 1)} - ${newMessage.groupId.sellerId.companyName}`;
-            } else if (newMessage.groupId?.name) {
-                groupName = newMessage.groupId.name;
-            } else {
-                const group = groups.find(g => g._id === newMessage.groupId);
-                if (group?.sellerId?.companyName && group?.sellerIndex !== undefined) {
-                    groupName = `${Math.abs(group.sellerIndex + 1)} - ${group.sellerId.companyName}`;
-                } else if (group?.name) {
-                    groupName = group.name;
+                // Increment unread count for this group
+                let gId = newMessage.groupId?._id || newMessage.groupId;
+                if (gId) {
+                    const gIdString = typeof gId === 'string' ? gId : gId.toString();
+                    const currentCounts = get().unreadCounts || {};
+                    const newUnreadCounts = {
+                        ...currentCounts,
+                        [gIdString]: (currentCounts[gIdString] || 0) + 1
+                    };
+                    set({ unreadCounts: newUnreadCounts });
                 }
             }
 
-            // Show notification with group name (2 second duration)
-            console.log("🔔 Showing group notification:", groupName);
-            toast.success(`New message from ${groupName}`, { duration: 2000 });
-            console.log(`New message from ${groupName}`);
-
-            // Increment unread count for this group
-            let gId = newMessage.groupId?._id || newMessage.groupId;
-            if (gId) {
-                const gIdString = typeof gId === 'string' ? gId : gId.toString();
-                const currentCounts = get().unreadCounts || {};
-                const newUnreadCounts = {
-                    ...currentCounts,
-                    [gIdString]: (currentCounts[gIdString] || 0) + 1
-                };
-                set({ unreadCounts: newUnreadCounts });
-            }
-
             // Move group to top of groups list
-            let groupId = newMessage.groupId?._id || newMessage.groupId;
-            const gIdStr = groupId?.toString();
-            const group = groups.find(g => g._id === gIdStr);
-            if (group) {
-                const otherGroups = groups.filter(g => g._id !== gIdStr);
-                set({ groups: [group, ...otherGroups] });
+            let gIdWrap = newMessage.groupId?._id || newMessage.groupId;
+            const gIdStr = gIdWrap?.toString();
+            if (gIdStr) {
+                const group = groups.find(g => g._id === gIdStr);
+                if (group) {
+                    const otherGroups = groups.filter(g => g._id !== gIdStr);
+                    set({ groups: [group, ...otherGroups] });
+                }
             }
         });
 
