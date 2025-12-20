@@ -185,13 +185,17 @@ export const sendMessage = async (req, res) => {
         // Upload file if provided (PDFs, documents, etc.)
         if (file) {
             try {
-                console.log('📄 Uploading file to Supabase Storage...');
+                console.log('📄 Processing file upload...');
+                console.log(' - File type:', typeof file);
+                console.log(' - File length:', file ? file.length : 'null');
+                if (file && file.length > 50) console.log(' - File start:', file.substring(0, 50));
 
                 // Convert base64 to buffer
                 // Format matches: data:application/pdf;base64,.....
                 const matches = file.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
 
                 if (!matches || matches.length !== 3) {
+                    console.error('❌ Invalid file format. Regex match failed.');
                     return res.status(400).json({ error: 'Invalid file format' });
                 }
 
