@@ -26,10 +26,24 @@ export const useMessageStore = create(persist((set, get) => ({
     getUsers: async () => {
         set({ isUsersLoading: true })
         try {
-            const res = await axiosInstance.get('/message/users')
-            set({ users: res.data })
+            const res = await axiosInstance.get('/message/users');
+            const serverUsers = res.data;
+            const { users: localUsers } = get();
+
+            if (localUsers.length > 0) {
+                // Merge: Keep local order, add new users from server, update existing ones
+                const localIds = localUsers.map(u => u._id);
+                const orderedUsers = localUsers
+                    .map(localUser => serverUsers.find(su => su._id === localUser._id))
+                    .filter(Boolean); // Keep existing in their order
+
+                const newUsers = serverUsers.filter(su => !localIds.includes(su._id));
+                set({ users: [...orderedUsers, ...newUsers] });
+            } else {
+                set({ users: serverUsers });
+            }
         } catch (err) {
-            toast.error(err.response.err.message)
+            toast.error(err.response?.data?.message || "Failed to fetch users");
         } finally {
             set({ isUsersLoading: false })
         }
@@ -452,11 +466,25 @@ export const useMessageStore = create(persist((set, get) => ({
     getGroups: async () => {
         try {
             const res = await axiosInstance.get('/group');
-            set({ groups: res.data });
+            const serverGroups = res.data;
+            const { groups: localGroups } = get();
+
+            if (localGroups.length > 0) {
+                // Merge: Keep local order
+                const localIds = localGroups.map(g => g._id);
+                const orderedGroups = localGroups
+                    .map(localGroup => serverGroups.find(sg => sg._id === localGroup._id))
+                    .filter(Boolean);
+
+                const newGroups = serverGroups.filter(sg => !localIds.includes(sg._id));
+                set({ groups: [...orderedGroups, ...newGroups] });
+            } else {
+                set({ groups: serverGroups });
+            }
 
             // Only set sellerIndex if groups exist
-            if (res.data && res.data.length > 0 && res.data[0].sellerIndex !== undefined) {
-                const index = Number(res.data[0].sellerIndex) + 1;
+            if (serverGroups && serverGroups.length > 0 && serverGroups[0].sellerIndex !== undefined) {
+                const index = Number(serverGroups[0].sellerIndex) + 1;
                 set({ sellerIndex: index });
             }
         } catch (error) {
@@ -727,5 +755,9 @@ export const useMessageStore = create(persist((set, get) => ({
 
 }), {
     name: "message-store",
-    partialize: (state) => ({ unreadCounts: state.unreadCounts }),
+    partialize: (state) => ({
+        unreadCounts: state.unreadCounts,
+        users: state.users,
+        groups: state.groups
+    }),
 }));
