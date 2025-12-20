@@ -63,7 +63,6 @@ const GroupMessageBubble = ({ msg, onEdit, onDelete, onShowHistory, messageEndRe
             </div>
             <div className='chat-header mb-1 flex items-center gap-2'>
                 <span className='font-medium'>{msg.senderId?.fullName}</span>
-                <time className='text-xs opacity-50'>{DateFormated(msg.createdAt)}</time>
 
                 {/* Actions: Copy, Forward, Edit, Delete */}
                 <div className="flex items-center gap-1 opacity-0 group-hover/msg:opacity-100 transition-opacity">
@@ -102,24 +101,29 @@ const GroupMessageBubble = ({ msg, onEdit, onDelete, onShowHistory, messageEndRe
                 <div className="whitespace-pre-wrap">
                     {renderTextWithMentions(msg.text)}
                 </div>
-                <div className="flex justify-between items-center mt-1">
-                    {msg.isEdited ? (
-                        <button onClick={(e) => { e.stopPropagation(); onShowHistory(msg); }}
-                            className='text-[10px] opacity-50 italic hover:text-primary flex items-center gap-0.5'>
-                            <Clock className='size-2.5' /> edited
-                        </button>
-                    ) : <div />}
+                <div className="flex justify-between items-end mt-1 gap-2">
+                    <div className="flex flex-col">
+                        {msg.isEdited && (
+                            <button onClick={(e) => { e.stopPropagation(); onShowHistory(msg); }}
+                                className='text-[10px] opacity-50 italic hover:text-primary flex items-center gap-0.5'>
+                                <Clock className='size-2.5' /> edited
+                            </button>
+                        )}
+                    </div>
 
-                    {isOwnMessage && !msg.isDeleted && msg.seenBy?.length > 0 && (
-                        <div className="flex items-center gap-1 text-[9px] opacity-60" title={`Seen by: ${msg.seenBy.map(u => u.fullName).join(', ')}`}>
-                            <span className="truncate max-w-[100px]">
-                                {msg.seenBy.length === 1
-                                    ? `Seen by ${msg.seenBy[0].fullName}`
-                                    : `Seen by ${msg.seenBy[0].fullName} and ${msg.seenBy.length - 1} more`}
-                            </span>
-                            <CheckCheck className="size-2.5 text-primary" />
-                        </div>
-                    )}
+                    <div className="flex items-center gap-1.5 ml-auto">
+                        <time className='text-[10px] opacity-50 leading-none'>{DateFormated(msg.createdAt)}</time>
+                        {isOwnMessage && !msg.isDeleted && msg.seenBy?.length > 0 && (
+                            <div className="flex items-center gap-1 opacity-60" title={`Seen by: ${msg.seenBy.map(u => u.fullName).join(', ')}`}>
+                                <span className="text-[9px] truncate max-w-[80px]">
+                                    {msg.seenBy.length === 1
+                                        ? `Seen by ${msg.seenBy[0].fullName}`
+                                        : `Seen by ${msg.seenBy[0].fullName} and ${msg.seenBy.length - 1} more`}
+                                </span>
+                                <CheckCheck className="size-2.5 text-primary" />
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
         </div>

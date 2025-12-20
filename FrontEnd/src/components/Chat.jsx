@@ -150,13 +150,7 @@ function Chat() {
                       </div>
                     </div>
 
-                    <div className='chat-header flex items-center gap-1 sm:gap-2 flex-wrap'>
-                      <time className='text-xs opacity-50 flex items-center gap-1'>
-                        {DateFormated(v.createdAt)}
-                        {isOwnMessage && !v.isDeleted && v.seenBy?.length > 0 && (
-                          <CheckCheck className="size-3 text-primary" />
-                        )}
-                      </time>
+                    <div className='chat-header flex items-center gap-1 sm:gap-2 flex-wrap min-h-[24px]'>
                       {isOwnMessage && !v.isDeleted && (
                         <div className='flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity'>
                           <button
@@ -232,7 +226,7 @@ function Chat() {
                                   href={v.fileUrl}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="flex items-center gap-2 p-2 rounded-lg bg-base-200 hover:bg-base-300 transition-colors border border-base-300 group/file w-fit max-w-full"
+                                  className="flex items-center gap-2 p-2 rounded-lg bg-base-200 office-300 transition-colors border border-base-300 group/file w-fit max-w-full"
                                 >
                                   <Paperclip className="size-4 text-primary" />
                                   <span className="text-xs font-medium truncate max-w-[150px]">{v.fileName || 'Attachment'}</span>
@@ -240,19 +234,26 @@ function Chat() {
                                 </a>
                               </div>
                             )}
-                            {v.text && <p>{v.text}</p>}
-                            {v.isEdited && (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setShowHistoryMsg(v);
-                                }}
-                                className='text-[10px] opacity-50 self-end mt-1 italic hover:text-primary transition-colors flex items-center gap-0.5'
-                              >
-                                <Clock className='size-2.5' />
-                                edited
-                              </button>
-                            )}
+                            {v.text && <p className="mb-1">{v.text}</p>}
+                            <div className="flex items-center gap-1 self-end mt-auto">
+                              {v.isEdited && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setShowHistoryMsg(v);
+                                  }}
+                                  className='text-[10px] opacity-50 italic hover:text-primary transition-colors flex items-center gap-0.5 mr-1'
+                                >
+                                  <Clock className='size-2.5' /> edited
+                                </button>
+                              )}
+                              <time className='text-[10px] opacity-50 flex items-center gap-1 leading-none'>
+                                {DateFormated(v.createdAt)}
+                                {isOwnMessage && !v.isDeleted && v.seenBy?.length > 0 && (
+                                  <CheckCheck className="size-3 text-primary" />
+                                )}
+                              </time>
+                            </div>
                           </>
                         )}
                       </div>

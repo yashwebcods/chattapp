@@ -133,9 +133,16 @@ export const getGroups = async (req, res) => {
                 doc => doc._id.toString() === group.sellerId._id.toString()
             );
 
+            // Calculate unread count for this group
+            const unreadCount = await Message.countDocuments({
+                groupId: group._id,
+                seenBy: { $ne: userId }
+            });
+
             validGroups.push({
                 ...group.toObject(),
-                sellerIndex: index >= 0 ? index : null
+                sellerIndex: index >= 0 ? index : null,
+                unreadCount
             });
         }
 

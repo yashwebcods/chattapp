@@ -566,7 +566,16 @@ export const useMessageStore = create(persist((set, get) => ({
         try {
             const res = await axiosInstance.get('/group');
             const serverGroups = res.data;
-            const { groups: localGroups } = get();
+            const { groups: localGroups, unreadCounts } = get();
+
+            // Initialize unread counts from server data
+            const newUnreadCounts = { ...(unreadCounts || {}) };
+            serverGroups.forEach(group => {
+                if (group.unreadCount !== undefined) {
+                    newUnreadCounts[group._id] = group.unreadCount;
+                }
+            });
+            set({ unreadCounts: newUnreadCounts });
 
             if (localGroups.length > 0) {
                 // Merge: Keep local order
