@@ -4,7 +4,7 @@ import { ChatHeader } from './ChatHeader';
 import { MessageInput } from './MessageInput';
 import ChatSkeleton from './Skeletons/ChatSkeleton';
 import { useAuthStore } from '../store/useAuthStore';
-import { DateFormated } from '../lib/utills';
+import { DateFormated, getDownloadUrl } from '../lib/utills';
 import { Trash2, Pencil, Clock, X, Copy, Share2, Download, Paperclip, CheckCheck } from 'lucide-react';
 import toast from 'react-hot-toast';
 import ForwardModal from './ForwardModal';
@@ -268,17 +268,20 @@ function Chat() {
                               ) : (
                                 <>
                                   {v.image && (
-                                    <img
-                                      src={v.image}
-                                      loading="lazy"
-                                      className='max-w-[150px] sm:max-w-[200px] rounded mb-2'
-                                      alt="Message content"
-                                    />
+                                    <a href={getDownloadUrl(v.image)} download={`${v.fileName || 'image'}.png`} className="block">
+                                      <img
+                                        src={v.image}
+                                        loading="lazy"
+                                        className='max-w-[150px] sm:max-w-[200px] rounded mb-2 cursor-pointer hover:opacity-80 transition-opacity'
+                                        alt="Message content"
+                                      />
+                                    </a>
                                   )}
                                   {v.fileUrl && (
                                     <div className="mb-2">
                                       <a
-                                        href={v.fileUrl}
+                                        href={getDownloadUrl(v.fileUrl)}
+                                        download={v.fileName || 'Attachment'}
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         className="flex items-center gap-2 p-2 rounded-lg bg-base-200 hover:bg-base-300 transition-colors border border-base-300 group/file w-fit max-w-full"

@@ -1,5 +1,5 @@
 import React from 'react';
-import { DateFormated } from '../lib/utills';
+import { DateFormated, getDownloadUrl } from '../lib/utills';
 import { Pencil, Trash2, Clock, Copy, Share2, File, CheckCheck } from 'lucide-react';
 import { useMessageStore } from '../store/useMessageStore';
 import { useAuthStore } from '../store/useAuthStore';
@@ -86,15 +86,17 @@ const GroupMessageBubble = ({ msg, onEdit, onDelete, onShowHistory, messageEndRe
             </div>
             <div className={`chat-bubble flex flex-col ${msg.isDeleted ? 'italic opacity-70' : ''}`}>
                 {msg.image && (
-                    <img src={msg.image} loading="lazy" className='max-w-[200px] rounded mb-2' alt="message" />
+                    <a href={getDownloadUrl(msg.image)} download={`${msg.fileName || 'image'}.png`} className="block">
+                        <img src={msg.image} loading="lazy" className='max-w-[200px] rounded mb-2 cursor-pointer hover:opacity-80 transition-opacity' alt="message" />
+                    </a>
                 )}
                 {msg.fileUrl && (
-                    <a href={msg.fileUrl} download={msg.fileName || 'file'} target="_blank" rel="noopener noreferrer"
+                    <a href={getDownloadUrl(msg.fileUrl)} download={msg.fileName || 'file'} target="_blank" rel="noopener noreferrer"
                         className='flex items-center gap-2 p-3 bg-base-300 rounded-lg hover:bg-base-200 transition mb-2'>
                         <File className='size-5 text-primary' />
                         <div className='flex-1 min-w-0'>
                             <p className='font-medium truncate'>{msg.fileName || 'File'}</p>
-                            <p className='text-xs opacity-70'>Click to download/view</p>
+                            <p className='text-xs opacity-70'>Click to download</p>
                         </div>
                     </a>
                 )}
