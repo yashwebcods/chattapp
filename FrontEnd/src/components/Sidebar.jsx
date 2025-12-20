@@ -88,7 +88,7 @@ function Sidebar({ onSelectUser }) {
                     </div>
                 </div>
                 {/* Online Filter Toggle */}
-                <div className="mt-3 hidden sm:flex items-center gap-2">
+                <div className="mt-3 flex items-center gap-2">
                     <label className="cursor-pointer label gap-2 p-0">
                         <input
                             type="checkbox"
