@@ -1,6 +1,6 @@
 import express from 'express'
 import { proctedRoute } from '../Config/auth.middlawear.js'
-import { getMessage, getUser, sendMessage, deleteMessages, clearChat, clearGroupChat } from '../Controllers/message.Ctl.js'
+import { getMessage, getUser, sendMessage, deleteMessages, clearChat, clearGroupChat , editMessage } from '../Controllers/message.Ctl.js'
 const route = express.Router()
 
 route.get('/users', proctedRoute, getUser)
@@ -9,6 +9,6 @@ route.post('/send/:id', proctedRoute, sendMessage)
 route.post('/delete', proctedRoute, deleteMessages)
 route.delete('/clear/:id', proctedRoute, clearChat)
 route.delete('/group/:groupId', proctedRoute, clearGroupChat)
-// route.put('/edit/:id', proctedRoute, editMessage)
+route.put('/edit/:id', proctedRoute, editMessage)
 
 export default route;

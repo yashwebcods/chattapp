@@ -446,70 +446,70 @@ export const clearGroupChat = async (req, res) => {
 /* ============================================================
    EDIT MESSAGE
 ============================================================ */
-// export const editMessage = async (req, res) => {
-//     try {
-//         const { id: messageId } = req.params;
-//         const { text } = req.body;
-//         const userId = req.user._id;
+export const editMessage = async (req, res) => {
+    try {
+        const { id: messageId } = req.params;
+        const { text } = req.body;
+        const userId = req.user._id;
 
-//         // Validate text
-//         if (!text || text.trim() === '') {
-//             return res.status(400).json({ message: "Message text cannot be empty" });
-//         }
+        // Validate text
+        if (!text || text.trim() === '') {
+            return res.status(400).json({ message: "Message text cannot be empty" });
+        }
 
-//         // Find the message
-//         const message = await Message.findById(messageId);
+        // Find the message
+        const message = await Message.findById(messageId);
 
-//         if (!message) {
-//             return res.status(404).json({ message: "Message not found" });
-//         }
+        if (!message) {
+            return res.status(404).json({ message: "Message not found" });
+        }
 
-//         // Check if user is the sender
-//         if (message.senderId.toString() !== userId.toString()) {
-//             return res.status(403).json({ message: "You can only edit your own messages" });
-//         }
+        // Check if user is the sender
+        if (message.senderId.toString() !== userId.toString()) {
+            return res.status(403).json({ message: "You can only edit your own messages" });
+        }
 
-//         // Check if message is deleted
-//         if (message.isDeleted) {
-//             return res.status(400).json({ message: "Cannot edit deleted message" });
-//         }
+        // Check if message is deleted
+        if (message.isDeleted) {
+            return res.status(400).json({ message: "Cannot edit deleted message" });
+        }
 
-//         // Update the message
-//         message.text = text.trim();
-//         message.isEdited = true;
-//         message.editedAt = new Date();
+        // Update the message
+        message.text = text.trim();
+        message.isEdited = true;
+        message.editedAt = new Date();
 
-//         await message.save();
-//         await message.populate("senderId", "fullName image");
+        await message.save();
+        await message.populate("senderId", "fullName image");
 
-//         // Populate groupId if exists
-//         if (message.groupId) {
-//             await message.populate({
-//                 path: 'groupId',
-//                 populate: { path: 'sellerId', select: 'companyName name' }
-//             });
-//         }
+        // Populate groupId if exists
+        if (message.groupId) {
+            await message.populate({
+                path: 'groupId',
+                populate: { path: 'sellerId', select: 'companyName name' }
+            });
+        }
 
-//         // Emit socket event to all involved users
-//         const involvedUsers = new Set();
-//         if (message.receiverId) {
-//             involvedUsers.add(message.receiverId.toString());
-//         }
-//         involvedUsers.add(userId.toString());
+        // Emit socket event to all involved users
+        const involvedUsers = new Set();
+        if (message.receiverId) {
+            involvedUsers.add(message.receiverId.toString());
+        }
+        involvedUsers.add(userId.toString());
 
-//         console.log('✏️ Emitting messageEdited event to users:', Array.from(involvedUsers));
-//         involvedUsers.forEach(uid => {
-//             io.to(uid).emit("messageEdited", message);
-//         });
+        console.log('✏️ Emitting messageEdited event to users:', Array.from(involvedUsers));
+        involvedUsers.forEach(uid => {
+            io.to(uid).emit("messageEdited", message);
+        });
 
-//         // For group messages, emit to everyone
-//         if (message.groupId) {
-//             io.emit("messageEdited", message);
-//         }
+        // For group messages, emit to everyone
+        if (message.groupId) {
+            io.emit("messageEdited", message);
+        }
 
-//         res.status(200).json(message);
-//     } catch (error) {
-//         console.log("Error in editMessage:", error.message);
-//         res.status(500).json({ message: "Internal Server Error" });
-//     }
-// };
+        res.status(200).json(message);
+    } catch (error) {
+        console.log("Error in editMessage:", error.message);
+        res.status(500).json({ message: "Internal Server Error" });
+    }
+};

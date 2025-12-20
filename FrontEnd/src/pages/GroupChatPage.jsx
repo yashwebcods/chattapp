@@ -2,7 +2,7 @@ import React, { useEffect, useRef } from 'react'
 import { useMessageStore } from '../store/useMessageStore'
 import { useAuthStore } from '../store/useAuthStore'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Users, Send, Image as ImageIcon, X, UserPlus, UserMinus, Paperclip, File, Trash2, Search } from 'lucide-react'
+import { ArrowLeft, Users, Send, Image as ImageIcon, X, UserPlus, UserMinus, Paperclip, File, Trash2, Search, Pencil } from 'lucide-react'
 import { DateFormated } from '../lib/utills'
 import { useState } from 'react'
 import toast from 'react-hot-toast'
@@ -11,7 +11,7 @@ import { axiosInstance } from '../lib/axios'
 function GroupChatPage() {
     const { groupId } = useParams()
     const navigate = useNavigate()
-    const { groups, getGroups, selectedGroup, setSelectedGroup } = useMessageStore()
+    const { groups, getGroups, selectedGroup, setSelectedGroup, editMessage, deleteMessages } = useMessageStore()
     const { authUser } = useAuthStore()
     const [groupMessages, setGroupMessages] = useState([])
     const [text, setText] = useState('')
@@ -25,9 +25,11 @@ function GroupChatPage() {
     const messageEndRef = useRef(null)
     const fileInputRef = useRef(null)
     const documentFileInputRef = useRef(null)
+    const [editingMsgId, setEditingMsgId] = useState(null)
+    const [editContent, setEditContent] = useState('')
 
     // Add this filteredMessages logic
-    const filteredMessages = filterPending 
+    const filteredMessages = filterPending
         ? groupMessages.filter(msg => msg.image || msg.fileUrl)
         : groupMessages
 
@@ -58,15 +60,33 @@ function GroupChatPage() {
 
         socket.on('newGroupMessage', (newMessage) => {
             console.log('📨 Received group message:', newMessage)
-            console.log('📎 Has fileUrl?', !!newMessage.fileUrl)
-            console.log('📄 fileName:', newMessage.fileName)
             if (newMessage.groupId === groupId && !groupMessages.some(msg => msg._id === newMessage._id)) {
                 setGroupMessages((prevMessages) => [...prevMessages, newMessage])
             }
         })
 
+        socket.on('messageEdited', (updatedMessage) => {
+            console.log('✏️ Received messageEdited event:', updatedMessage)
+            setGroupMessages((prevMessages) =>
+                prevMessages.map(msg => msg._id === updatedMessage._id ? updatedMessage : msg)
+            )
+        })
+
+        socket.on('messagesDeleted', ({ messageIds }) => {
+            console.log('🗑️ Received messagesDeleted event:', messageIds)
+            setGroupMessages((prevMessages) =>
+                prevMessages.map(msg =>
+                    messageIds.includes(msg._id)
+                        ? { ...msg, isDeleted: true, text: 'This message was deleted', image: null, fileUrl: null }
+                        : msg
+                )
+            )
+        })
+
         return () => {
             socket.off('newGroupMessage')
+            socket.off('messageEdited')
+            socket.off('messagesDeleted')
         }
     }, [groupId])
 
@@ -224,20 +244,30 @@ function GroupChatPage() {
     const handleDeleteMessage = async (messageId) => {
         if (!confirm('Are you sure you want to delete this message?')) return;
         try {
-            await axiosInstance.post('/message/delete', { messageIds: [messageId] });
-            toast.success('Message deleted');
-
-            // Update UI locally
-            setGroupMessages(groupMessages.map(m =>
-                m._id === messageId
-                    ? { ...m, isDeleted: true, text: 'This message was deleted', image: null, fileUrl: null }
-                    : m
-            ));
+            await deleteMessages([messageId]);
+            // state update is handled by socket listener or optimistic update if we add it
         } catch (error) {
-            toast.error('Failed to delete message');
             console.error('Error deleting message:', error);
         }
     }
+
+    const handleUpdateMessage = async (messageId) => {
+        if (!editContent.trim()) return
+        try {
+            await editMessage(messageId, editContent)
+            setEditingMsgId(null)
+            setEditContent('')
+        } catch (error) {
+            console.error('Error updating message:', error)
+        }
+    }
+
+    useEffect(() => {
+        if (editingMsgId) {
+            const msg = groupMessages.find(m => m._id === editingMsgId)
+            if (msg) setEditContent(msg.text)
+        }
+    }, [editingMsgId, groupMessages])
 
     const handleAddMember = async () => {
         if (!selectedUserId) {
@@ -390,15 +420,24 @@ function GroupChatPage() {
                                             <time className='text-xs opacity-50'>
                                                 {DateFormated(msg.createdAt)}
                                             </time>
-                                            {/* Delete button for own messages */}
+                                            {/* Edit/Delete buttons for own messages */}
                                             {msg.senderId?._id === authUser._id && !msg.isDeleted && (
-                                                <button
-                                                    onClick={() => handleDeleteMessage(msg._id)}
-                                                    className="btn btn-ghost btn-xs text-error opacity-0 group-hover:opacity-100 transition-opacity p-0 size-5 min-h-0"
-                                                    title="Delete message"
-                                                >
-                                                    <Trash2 className="size-3" />
-                                                </button>
+                                                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    <button
+                                                        onClick={() => setEditingMsgId(msg._id)}
+                                                        className="btn btn-ghost btn-xs text-info p-0 size-5 min-h-0"
+                                                        title="Edit message"
+                                                    >
+                                                        <Pencil className="size-3" />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleDeleteMessage(msg._id)}
+                                                        className="btn btn-ghost btn-xs text-error p-0 size-5 min-h-0"
+                                                        title="Delete message"
+                                                    >
+                                                        <Trash2 className="size-3" />
+                                                    </button>
+                                                </div>
                                             )}
                                         </div>
                                         <div className={`chat-bubble flex flex-col ${msg.isDeleted ? 'italic opacity-70' : ''}`}>
@@ -420,7 +459,39 @@ function GroupChatPage() {
                                                     </div>
                                                 </a>
                                             )}
-                                            {msg.text && <p>{msg.text}</p>}
+                                            {editingMsgId === msg._id ? (
+                                                <div className="flex flex-col gap-2 min-w-[200px]">
+                                                    <textarea
+                                                        className="textarea textarea-bordered textarea-sm w-full bg-base-100 text-base-content"
+                                                        value={editContent}
+                                                        onChange={(e) => setEditContent(e.target.value)}
+                                                        autoFocus
+                                                    />
+                                                    <div className="flex justify-end gap-2">
+                                                        <button
+                                                            className="btn btn-xs btn-ghost"
+                                                            onClick={() => setEditingMsgId(null)}
+                                                        >
+                                                            Cancel
+                                                        </button>
+                                                        <button
+                                                            className="btn btn-xs btn-primary"
+                                                            onClick={() => handleUpdateMessage(msg._id)}
+                                                        >
+                                                            Save
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <>
+                                                    {msg.text && <p>{msg.text}</p>}
+                                                    {msg.isEdited && (
+                                                        <span className="text-[10px] opacity-50 self-end mt-1 italic">
+                                                            edited
+                                                        </span>
+                                                    )}
+                                                </>
+                                            )}
                                         </div>
                                     </div>
                                 )
@@ -559,7 +630,7 @@ function GroupChatPage() {
                         <button className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">✕</button>
                     </form>
                     <h3 className="font-bold text-lg mb-4">Add Member to Group</h3>
-                    
+
                     {/* Search Bar */}
                     <div className="form-control mb-4">
                         <div className="input input-bordered flex items-center gap-2">
@@ -581,16 +652,15 @@ function GroupChatPage() {
                             .filter(user => {
                                 const searchLower = userSearchTerm.toLowerCase()
                                 return user.fullName.toLowerCase().includes(searchLower) ||
-                                       user.email.toLowerCase().includes(searchLower)
+                                    user.email.toLowerCase().includes(searchLower)
                             })
                             .map(user => (
                                 <div
                                     key={user._id}
-                                    className={`p-3 rounded-lg border cursor-pointer transition-all ${
-                                        selectedUserId === user._id
-                                            ? 'bg-primary text-primary-content border-primary'
-                                            : 'bg-base-200 hover:bg-base-300 border-base-300'
-                                    }`}
+                                    className={`p-3 rounded-lg border cursor-pointer transition-all ${selectedUserId === user._id
+                                        ? 'bg-primary text-primary-content border-primary'
+                                        : 'bg-base-200 hover:bg-base-300 border-base-300'
+                                        }`}
                                     onClick={() => setSelectedUserId(user._id)}
                                 >
                                     <div className="flex items-center gap-3">
@@ -613,13 +683,13 @@ function GroupChatPage() {
                             .filter(user => {
                                 const searchLower = userSearchTerm.toLowerCase()
                                 return user.fullName.toLowerCase().includes(searchLower) ||
-                                       user.email.toLowerCase().includes(searchLower)
+                                    user.email.toLowerCase().includes(searchLower)
                             }).length === 0 && (
-                            <div className="text-center py-8 text-base-content/60">
-                                <Search className="size-8 mx-auto mb-2 opacity-50" />
-                                <p className="text-sm">No users found</p>
-                            </div>
-                        )}
+                                <div className="text-center py-8 text-base-content/60">
+                                    <Search className="size-8 mx-auto mb-2 opacity-50" />
+                                    <p className="text-sm">No users found</p>
+                                </div>
+                            )}
                     </div>
                     <div className="modal-action">
                         <button

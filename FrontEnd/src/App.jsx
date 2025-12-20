@@ -22,7 +22,7 @@ import { useMessageStore } from "./store/useMessageStore";
 
 function App() {
   const { authUser, checkAuth, isCheckingAuth, socket } = useAuthStore();
-  const { subscribeToGroupMessages, unsubscribeFromGroupMessages, subcribeToMessages, unsubcribeToMessage, subscribeToTypingEvents, unsubscribeFromTypingEvents, subscribeToClearChatEvents } = useMessageStore();
+  const { subscribeToGroupMessages, unsubscribeFromGroupMessages, subcribeToMessages, unsubcribeToMessage, subscribeToTypingEvents, unsubscribeFromTypingEvents, subscribeToClearChatEvents, subscribeToEditEvents } = useMessageStore();
   const { theme } = useThemeStore();
 
   useEffect(() => {
@@ -64,6 +64,7 @@ function App() {
       subcribeToMessages();
       subscribeToTypingEvents();
       subscribeToClearChatEvents(); // Subscribe to chat cleared events
+      subscribeToEditEvents(); // Subscribe to message edited events
     }
     return () => {
       if (socket) {
@@ -72,7 +73,7 @@ function App() {
         unsubscribeFromTypingEvents();
       }
     };
-  }, [authUser, socket, subscribeToGroupMessages, unsubscribeFromGroupMessages, subcribeToMessages, unsubcribeToMessage, subscribeToTypingEvents, unsubscribeFromTypingEvents, subscribeToClearChatEvents]);
+  }, [authUser, socket, subscribeToGroupMessages, unsubscribeFromGroupMessages, subcribeToMessages, unsubcribeToMessage, subscribeToTypingEvents, unsubscribeFromTypingEvents, subscribeToClearChatEvents, subscribeToEditEvents]);
 
   if (isCheckingAuth && !authUser) {
     return (

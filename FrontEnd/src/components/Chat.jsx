@@ -5,27 +5,30 @@ import { MessageInput } from './MessageInput';
 import ChatSkeleton from './Skeletons/ChatSkeleton';
 import { useAuthStore } from '../store/useAuthStore';
 import { DateFormated } from '../lib/utills';
-import { Trash2 } from 'lucide-react';
+import { Trash2, Pencil } from 'lucide-react';
 
 function Chat() {
   const {
     message,
-    getMessage,
-    getGroupMessages,
     isMessageLoding,
     selectedUser,
     selectedGroup,
-    isSelectionMode,
-    selectedMessageIds,
-    toggleMessageSelection,
-    deleteMessages,
+    getMessage,
     subcribeToMessages,
     unsubcribeToMessage,
+    getGroupMessages,
     subscribeToGroupMessages,
-    unsubscribeFromGroupMessages
+    selectedMessageIds,
+    isSelectionMode,
+    toggleMessageSelection,
+    deleteMessages,
+    unsubscribeFromGroupMessages,
+    editMessage
   } = useMessageStore();
 
   const { authUser } = useAuthStore();
+  const [editingMsgId, setEditingMsgId] = React.useState(null);
+  const [editContent, setEditContent] = React.useState('');
 
   const messageEndRef = useRef(null);
 
@@ -58,6 +61,24 @@ function Chat() {
     }
   };
 
+  const handleUpdateMessage = async (messageId) => {
+    if (!editContent.trim()) return;
+    try {
+      await editMessage(messageId, editContent);
+      setEditingMsgId(null);
+      setEditContent('');
+    } catch (error) {
+      console.error('Error updating message:', error);
+    }
+  };
+
+  useEffect(() => {
+    if (editingMsgId) {
+      const msg = message.find((m) => m._id === editingMsgId);
+      if (msg) setEditContent(msg.text);
+    }
+  }, [editingMsgId, message]);
+
   if (isMessageLoding) {
     return (
       <div className='flex flex-col h-full'>
@@ -75,7 +96,7 @@ function Chat() {
       <div className='flex-shrink-0'>
         <ChatHeader />
       </div>
-      
+
       {isSelectionMode && selectedMessageIds.length > 0 && (
         <div className='sticky top-0 z-50 py-2 bg-base-100/80 backdrop-blur-sm flex justify-center'>
           <button
@@ -143,18 +164,30 @@ function Chat() {
                         {DateFormated(v.createdAt)}
                       </time>
                       {isOwnMessage && !v.isDeleted && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (window.confirm('Delete this message?')) {
-                              deleteMessages([v._id]);
-                            }
-                          }}
-                          className='btn btn-ghost btn-xs text-error opacity-0 group-hover:opacity-100 transition-opacity p-0 size-5 min-h-0'
-                          title='Delete message'
-                        >
-                          <Trash2 className='size-3' />
-                        </button>
+                        <div className='flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity'>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setEditingMsgId(v._id);
+                            }}
+                            className='btn btn-ghost btn-xs text-info p-0 size-5 min-h-0'
+                            title='Edit message'
+                          >
+                            <Pencil className='size-3' />
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (window.confirm('Delete this message?')) {
+                                deleteMessages([v._id]);
+                              }
+                            }}
+                            className='btn btn-ghost btn-xs text-error p-0 size-5 min-h-0'
+                            title='Delete message'
+                          >
+                            <Trash2 className='size-3' />
+                          </button>
+                        </div>
                       )}
                     </div>
 
@@ -179,7 +212,46 @@ function Chat() {
                                 alt="Message content"
                               />
                             )}
-                            {v.text && <p>{v.text}</p>}
+                            {editingMsgId === v._id ? (
+                              <div className='flex flex-col gap-2 min-w-[150px] sm:min-w-[200px]'>
+                                <textarea
+                                  className='textarea textarea-bordered textarea-xs sm:textarea-sm w-full bg-base-100 text-base-content'
+                                  value={editContent}
+                                  onChange={(e) => setEditContent(e.target.value)}
+                                  autoFocus
+                                  onClick={(e) => e.stopPropagation()}
+                                />
+                                <div className='flex justify-end gap-2'>
+                                  <button
+                                    className='btn btn-[10px] h-6 min-h-0 btn-ghost'
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setEditingMsgId(null);
+                                    }}
+                                  >
+                                    Cancel
+                                  </button>
+                                  <button
+                                    className='btn btn-[10px] h-6 min-h-0 btn-primary'
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleUpdateMessage(v._id);
+                                    }}
+                                  >
+                                    Save
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
+                              <>
+                                {v.text && <p>{v.text}</p>}
+                                {v.isEdited && (
+                                  <span className='text-[10px] opacity-50 self-end mt-1 italic'>
+                                    edited
+                                  </span>
+                                )}
+                              </>
+                            )}
                           </>
                         )}
                       </div>

@@ -227,6 +227,7 @@ export const useMessageStore = create(persist((set, get) => ({
             socket.off("connect");
             socket.off("chatCleared");
             socket.off("messagesDeleted");
+            socket.off("messageEdited");
             console.log("Unsubscribed from message events");
         }
     },
@@ -495,6 +496,42 @@ export const useMessageStore = create(persist((set, get) => ({
         } catch (error) {
             toast.error(error.response?.data?.message || "Failed to clear chat");
         }
+    },
+
+    editMessage: async (messageId, newText) => {
+        try {
+            const res = await axiosInstance.put(`/message/edit/${messageId}`, { text: newText });
+            const updatedMessage = res.data;
+
+            // Update local state
+            const { message } = get();
+            set({
+                message: message.map(msg => msg._id === messageId ? updatedMessage : msg)
+            });
+
+            toast.success("Message updated");
+            return updatedMessage;
+        } catch (error) {
+            toast.error(error.response?.data?.message || "Failed to edit message");
+            throw error;
+        }
+    },
+
+    subscribeToEditEvents: () => {
+        const socket = useAuthStore.getState().socket;
+        if (!socket) return;
+
+        socket.on("messageEdited", (updatedMessage) => {
+            console.log("✏️ messageEdited event received:", updatedMessage);
+            const { message } = get();
+
+            // Update the message in state if it exists
+            const updatedMessages = message.map(msg =>
+                msg._id === updatedMessage._id ? updatedMessage : msg
+            );
+
+            set({ message: updatedMessages });
+        });
     },
 
     clearGroupChat: async (groupId) => {
