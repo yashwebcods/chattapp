@@ -1,6 +1,6 @@
 import React from 'react';
 import { DateFormated } from '../lib/utills';
-import { Pencil, Trash2, Clock, Copy, Share2, File } from 'lucide-react';
+import { Pencil, Trash2, Clock, Copy, Share2, File, CheckCheck } from 'lucide-react';
 import { useMessageStore } from '../store/useMessageStore';
 import { useAuthStore } from '../store/useAuthStore';
 import toast from 'react-hot-toast';
@@ -102,12 +102,25 @@ const GroupMessageBubble = ({ msg, onEdit, onDelete, onShowHistory, messageEndRe
                 <div className="whitespace-pre-wrap">
                     {renderTextWithMentions(msg.text)}
                 </div>
-                {msg.isEdited && (
-                    <button onClick={(e) => { e.stopPropagation(); onShowHistory(msg); }}
-                        className='text-[10px] opacity-50 self-end mt-1 italic hover:text-primary flex items-center gap-0.5'>
-                        <Clock className='size-2.5' /> edited
-                    </button>
-                )}
+                <div className="flex justify-between items-center mt-1">
+                    {msg.isEdited ? (
+                        <button onClick={(e) => { e.stopPropagation(); onShowHistory(msg); }}
+                            className='text-[10px] opacity-50 italic hover:text-primary flex items-center gap-0.5'>
+                            <Clock className='size-2.5' /> edited
+                        </button>
+                    ) : <div />}
+
+                    {isOwnMessage && !msg.isDeleted && msg.seenBy?.length > 0 && (
+                        <div className="flex items-center gap-1 text-[9px] opacity-60" title={`Seen by: ${msg.seenBy.map(u => u.fullName).join(', ')}`}>
+                            <span className="truncate max-w-[100px]">
+                                {msg.seenBy.length === 1
+                                    ? `Seen by ${msg.seenBy[0].fullName}`
+                                    : `Seen by ${msg.seenBy[0].fullName} and ${msg.seenBy.length - 1} more`}
+                            </span>
+                            <CheckCheck className="size-2.5 text-primary" />
+                        </div>
+                    )}
+                </div>
             </div>
         </div>
     );

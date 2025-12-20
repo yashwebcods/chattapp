@@ -18,7 +18,7 @@ function GroupChatPage() {
     const navigate = useNavigate();
     const {
         groups, getGroups, selectedGroup, setSelectedGroup,
-        deleteMessages, setEditingMessage, message
+        deleteMessages, setEditingMessage, message, markAsSeen
     } = useMessageStore();
     const { authUser } = useAuthStore();
     const [groupMessages, setGroupMessages] = useState([]);
@@ -43,6 +43,7 @@ function GroupChatPage() {
             if (group) {
                 setSelectedGroup(group);
                 fetchGroupMessages(groupId);
+                markAsSeen(groupId);
             }
         }
     }, [groups, groupId]);

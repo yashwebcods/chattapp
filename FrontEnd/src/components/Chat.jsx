@@ -5,7 +5,7 @@ import { MessageInput } from './MessageInput';
 import ChatSkeleton from './Skeletons/ChatSkeleton';
 import { useAuthStore } from '../store/useAuthStore';
 import { DateFormated } from '../lib/utills';
-import { Trash2, Pencil, Clock, X, Copy, Share2, Download, Paperclip } from 'lucide-react';
+import { Trash2, Pencil, Clock, X, Copy, Share2, Download, Paperclip, CheckCheck } from 'lucide-react';
 import toast from 'react-hot-toast';
 import ForwardModal from './ForwardModal';
 
@@ -153,10 +153,8 @@ function Chat() {
                     <div className='chat-header flex items-center gap-1 sm:gap-2 flex-wrap'>
                       <time className='text-xs opacity-50 flex items-center gap-1'>
                         {DateFormated(v.createdAt)}
-                        {isOwnMessage && !v.isDeleted && v.isSeen && (
-                          <span className="text-[10px] text-primary font-bold flex items-center">
-                            Seen
-                          </span>
+                        {isOwnMessage && !v.isDeleted && v.seenBy?.length > 0 && (
+                          <CheckCheck className="size-3 text-primary" />
                         )}
                       </time>
                       {isOwnMessage && !v.isDeleted && (

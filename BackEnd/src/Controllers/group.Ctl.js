@@ -81,6 +81,7 @@ export const getGroupMessages = async (req, res) => {
         const { groupId } = req.params;
         const messages = await Message.find({ groupId })
             .populate("senderId", "fullName image email role")
+            .populate("seenBy", "fullName image")
             .sort({ createdAt: 1 }); // Sort by oldest first
         res.status(200).json(messages);
     } catch (error) {

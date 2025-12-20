@@ -24,11 +24,11 @@ export const getUser = async (req, res) => {
                 ]
             }).sort({ createdAt: -1 });
 
-            // Count unread messages for this user
+            // Count unread messages for this user (where current user is NOT in seenBy)
             const unreadCount = await Message.countDocuments({
                 senderId: user._id,
                 receiverId: loginUserId,
-                isSeen: false
+                seenBy: { $ne: loginUserId }
             });
 
             return {
@@ -39,7 +39,8 @@ export const getUser = async (req, res) => {
                     fileUrl: lastMessage.fileUrl,
                     messageType: lastMessage.messageType,
                     createdAt: lastMessage.createdAt,
-                    senderId: lastMessage.senderId
+                    senderId: lastMessage.senderId,
+                    seenBy: lastMessage.seenBy
                 } : null,
                 unreadCount
             };
@@ -56,21 +57,50 @@ export const getUser = async (req, res) => {
 ============================================================ */
 export const markMessagesAsSeen = async (req, res) => {
     try {
-        const { id: senderId } = req.params;
-        const receiverId = req.user._id;
+        const { id: targetId } = req.params; // senderId (DM) or groupId
+        const readerId = req.user._id;
 
-        await Message.updateMany(
-            { senderId, receiverId, isSeen: false },
-            { $set: { isSeen: true } }
-        );
+        // Determine if targetId is a group or a user (check for groupId field in messages)
+        const sampleMessage = await Message.findOne({
+            $or: [
+                { senderId: targetId, receiverId: readerId },
+                { groupId: targetId }
+            ]
+        });
 
-        // Emit socket event to the original sender to update their Seen indicator
-        const senderSocketId = getReseverSocketId(senderId);
-        if (senderSocketId) {
-            io.to(senderSocketId).emit("messagesSeen", {
-                seenBy: receiverId,
-                fromUser: senderId
+        if (!sampleMessage) return res.status(200).json({ message: "No messages to mark" });
+
+        const isGroup = !!sampleMessage.groupId;
+
+        if (isGroup) {
+            // Group Chat: Mark all messages in this group as seen by current user
+            await Message.updateMany(
+                { groupId: targetId, seenBy: { $ne: readerId } },
+                { $addToSet: { seenBy: readerId } }
+            );
+
+            // Emit to the whole group that someone saw the messages
+            io.emit("messagesSeen", {
+                seenBy: readerId,
+                seenByName: req.user.fullName,
+                groupId: targetId
             });
+        } else {
+            // DM: Mark all messages from senderId to readerId as seen
+            await Message.updateMany(
+                { senderId: targetId, receiverId: readerId, seenBy: { $ne: readerId } },
+                { $addToSet: { seenBy: readerId } }
+            );
+
+            // Emit specifically to the original sender
+            const senderSocketId = getReseverSocketId(targetId);
+            if (senderSocketId) {
+                io.to(senderSocketId).emit("messagesSeen", {
+                    seenBy: readerId,
+                    seenByName: req.user.fullName,
+                    fromUser: targetId // Original sender
+                });
+            }
         }
 
         res.status(200).json({ message: "Messages marked as seen" });
@@ -95,7 +125,7 @@ export const getMessage = async (req, res) => {
                 { senderId: myId, receiverId: userToChatId },
                 { senderId: userToChatId, receiverId: myId }
             ]
-        }).populate('deletedBy', 'fullName');
+        }).populate('deletedBy', 'fullName').populate('seenBy', 'fullName image');
 
         res.status(200).json(message);
     } catch (err) {

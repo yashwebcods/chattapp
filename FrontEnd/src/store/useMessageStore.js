@@ -61,25 +61,42 @@ export const useMessageStore = create(persist((set, get) => ({
         }
     },
 
-    markAsSeen: async (senderId) => {
+    markAsSeen: async (targetId) => {
         try {
-            await axiosInstance.post(`/message/seen/${senderId}`);
-            // Update local messages to seen
-            const { message, selectedUser } = get();
-            if (selectedUser?._id === senderId) {
+            await axiosInstance.post(`/message/seen/${targetId}`);
+            // Update local messages to include me in seenBy
+            const { message, selectedUser, selectedGroup } = get();
+            const authUser = useAuthStore.getState().authUser;
+
+            const isToSelected = (selectedUser?._id === targetId) || (selectedGroup?._id === targetId);
+
+            if (isToSelected) {
                 set({
-                    message: message.map(msg =>
-                        msg.senderId === senderId || msg.senderId?._id === senderId
-                            ? { ...msg, isSeen: true }
-                            : msg
-                    )
+                    message: message.map(msg => {
+                        const isFromTarget = msg.senderId === targetId || msg.senderId?._id === targetId || msg.groupId === targetId;
+                        const isNotSeenByMe = !msg.seenBy?.some(u =>
+                            (u === authUser._id) || (u._id === authUser._id)
+                        );
+
+                        if (isFromTarget && isNotSeenByMe) {
+                            return { ...msg, seenBy: [...(msg.seenBy || []), authUser] };
+                        }
+                        return msg;
+                    })
                 });
             }
             // Clear unread count locally
-            get().clearUnreadCount(senderId);
+            get().clearUnreadCount(targetId);
         } catch (error) {
             console.error("Error marking messages as seen:", error);
         }
+    },
+
+    clearUnreadCount: (targetId) => {
+        const { unreadCounts } = get();
+        const newCounts = { ...unreadCounts };
+        delete newCounts[targetId];
+        set({ unreadCounts: newCounts });
     },
 
     deleteUser: async (userId) => {
@@ -293,7 +310,7 @@ export const useMessageStore = create(persist((set, get) => ({
             // If viewing this chat, add message to current conversation AND mark as seen
             if (isFromSelectedUser && !message.some(msg => msg._id === newMessage._id)) {
                 set({ message: [...message, newMessage] });
-                markAsSeen(selectedUser._id);
+                get().markAsSeen(selectedUser._id);
             } else {
                 // Not viewing this chat - show notification and increment unread count
                 const senderName = newMessage.senderId?.fullName || 'Someone';
@@ -328,7 +345,8 @@ export const useMessageStore = create(persist((set, get) => ({
                             fileUrl: newMessage.fileUrl,
                             messageType: newMessage.messageType,
                             createdAt: newMessage.createdAt,
-                            senderId: newMessage.senderId
+                            senderId: newMessage.senderId,
+                            seenBy: newMessage.seenBy || []
                         }
                     };
                     set({ users: [updatedSender, ...otherUsers] });
@@ -337,18 +355,36 @@ export const useMessageStore = create(persist((set, get) => ({
         });
 
         // Listen for Seen events from other users
-        socket.on("messagesSeen", ({ seenBy, fromUser }) => {
-            console.log("👀 messagesSeen event received:", { seenBy, fromUser });
-            const { message, selectedUser } = get();
+        socket.on("messagesSeen", ({ seenBy, seenByName, fromUser, groupId }) => {
+            console.log("👀 messagesSeen event received:", { seenBy, seenByName, fromUser, groupId });
+            const { message, selectedUser, selectedGroup } = get();
 
-            // If we are currently chatting with the person who saw our messages
-            if (selectedUser && selectedUser._id === seenBy) {
+            // Handle DM seen
+            if (fromUser && selectedUser && selectedUser._id === fromUser) {
                 set({
-                    message: message.map(msg =>
-                        (msg.receiverId === seenBy || msg.receiverId?._id === seenBy) && !msg.isSeen
-                            ? { ...msg, isSeen: true }
-                            : msg
-                    )
+                    message: message.map(msg => {
+                        const isToReceiver = (msg.receiverId === seenBy || msg.receiverId?._id === seenBy);
+                        const alreadySeen = msg.seenBy?.some(u => (u === seenBy) || (u._id === seenBy));
+
+                        if (isToReceiver && !alreadySeen) {
+                            return { ...msg, seenBy: [...(msg.seenBy || []), { _id: seenBy, fullName: seenByName }] };
+                        }
+                        return msg;
+                    })
+                });
+            }
+
+            // Handle Group seen
+            if (groupId && selectedGroup && selectedGroup._id === groupId) {
+                set({
+                    message: message.map(msg => {
+                        const alreadySeen = msg.seenBy?.some(u => (u === seenBy) || (u._id === seenBy));
+
+                        if (!alreadySeen) {
+                            return { ...msg, seenBy: [...(msg.seenBy || []), { _id: seenBy, fullName: seenByName }] };
+                        }
+                        return msg;
+                    })
                 });
             }
         });
@@ -419,6 +455,7 @@ export const useMessageStore = create(persist((set, get) => ({
             if (isCurrentGroup) {
                 console.log("➕ Adding message to current group chat");
                 set({ message: [...message, newMessage] });
+                get().markAsSeen(selectedGroup._id); // Mark group messages as seen
             }
 
             // If we sent the message, don't show toast or increment unread count
