@@ -235,25 +235,17 @@ export const useMessageStore = create(persist((set, get) => ({
                 toast.success(`New message from ${senderName}`, { duration: 2000 });
 
                 // Increment unread count for this user
-                let senderId = newMessage.senderId._id || newMessage.senderId;
+                let senderId = newMessage.senderId?._id || newMessage.senderId;
                 // Ensure senderId is a string to match Sidebar keys
-                if (senderId && typeof senderId !== 'string') {
-                    senderId = senderId.toString();
+                if (senderId) {
+                    const sIdString = typeof senderId === 'string' ? senderId : senderId.toString();
+                    const currentCounts = get().unreadCounts || {};
+                    const newUnreadCounts = {
+                        ...currentCounts,
+                        [sIdString]: (currentCounts[sIdString] || 0) + 1
+                    };
+                    set({ unreadCounts: newUnreadCounts });
                 }
-
-                const newUnreadCounts = {
-                    ...unreadCounts,
-                    [senderId]: (unreadCounts[senderId] || 0) + 1
-                };
-
-                console.log("📈 Updating unread count:", {
-                    senderId,
-                    oldCount: unreadCounts[senderId] || 0,
-                    newCount: newUnreadCounts[senderId],
-                    allCounts: newUnreadCounts
-                });
-
-                set({ unreadCounts: newUnreadCounts });
             }
         });
     },
@@ -356,20 +348,16 @@ export const useMessageStore = create(persist((set, get) => ({
             console.log(`New message from ${groupName}`);
 
             // Increment unread count for this group
-            const gId = newMessage.groupId?._id || newMessage.groupId;
-            const newUnreadCounts = {
-                ...unreadCounts,
-                [gId]: (unreadCounts[gId] || 0) + 1
-            };
-
-            console.log("📈 Updating group unread count:", {
-                groupId: gId,
-                oldCount: unreadCounts[gId] || 0,
-                newCount: newUnreadCounts[gId],
-                allCounts: newUnreadCounts
-            });
-
-            set({ unreadCounts: newUnreadCounts });
+            let gId = newMessage.groupId?._id || newMessage.groupId;
+            if (gId) {
+                const gIdString = typeof gId === 'string' ? gId : gId.toString();
+                const currentCounts = get().unreadCounts || {};
+                const newUnreadCounts = {
+                    ...currentCounts,
+                    [gIdString]: (currentCounts[gIdString] || 0) + 1
+                };
+                set({ unreadCounts: newUnreadCounts });
+            }
         });
 
         // Listen for group updates (member add/remove)
@@ -394,14 +382,17 @@ export const useMessageStore = create(persist((set, get) => ({
         });
     },
 
-    clearUnreadCount: (groupId) => {
-        const { unreadCounts } = get();
-        set({
-            unreadCounts: {
-                ...unreadCounts,
-                [groupId]: 0
-            }
-        });
+    clearUnreadCount: (id) => {
+        const currentCounts = get().unreadCounts || {};
+        const idString = id?.toString();
+        if (idString) {
+            set({
+                unreadCounts: {
+                    ...currentCounts,
+                    [idString]: 0
+                }
+            });
+        }
     },
 
     unsubscribeFromGroupMessages: () => {
@@ -453,10 +444,11 @@ export const useMessageStore = create(persist((set, get) => ({
 
     setSelectedGroup: (selectedGroup) => {
         const { unreadCounts } = get();
-        if (selectedGroup) {
+        if (selectedGroup && selectedGroup._id) {
             // Clear unread count for this group
-            const newCounts = { ...unreadCounts };
-            delete newCounts[selectedGroup._id];
+            const gId = selectedGroup._id.toString();
+            const newCounts = { ...(unreadCounts || {}) };
+            newCounts[gId] = 0;
             set({ selectedGroup, selectedUser: null, unreadCounts: newCounts });
         } else {
             set({ selectedGroup, selectedUser: null });
@@ -465,10 +457,11 @@ export const useMessageStore = create(persist((set, get) => ({
 
     setSelectedUser: (selectedUser) => {
         const { unreadCounts } = get();
-        if (selectedUser) {
+        if (selectedUser && selectedUser._id) {
             // Clear unread count for this user
-            const newCounts = { ...unreadCounts };
-            delete newCounts[selectedUser._id];
+            const uId = selectedUser._id.toString();
+            const newCounts = { ...(unreadCounts || {}) };
+            newCounts[uId] = 0;
             set({ selectedUser, selectedGroup: null, unreadCounts: newCounts });
         } else {
             set({ selectedUser, selectedGroup: null });

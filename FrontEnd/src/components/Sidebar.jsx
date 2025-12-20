@@ -50,7 +50,7 @@ function Sidebar({ onSelectUser }) {
                         <button tabIndex={0} role="button" className="btn relative">
                             <Users />
                             {/* Show warning badge if any group has unread messages */}
-                            {groups.reduce((acc, g) => acc + (unreadCounts[g._id] || 0), 0) > 0 && (
+                            {Array.isArray(groups) && groups.reduce((acc, g) => acc + ((unreadCounts && g?._id) ? (unreadCounts[g._id] || 0) : 0), 0) > 0 && (
                                 <span className="absolute -top-1 -right-1 flex h-3 w-3">
                                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
                                     <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
@@ -77,9 +77,9 @@ function Sidebar({ onSelectUser }) {
                                     className="btn btn-ghost w-full justify-start justify-between"
                                 >
                                     View Groups
-                                    {groups.reduce((acc, g) => acc + (unreadCounts[g._id] || 0), 0) > 0 && (
+                                    {Array.isArray(groups) && groups.reduce((acc, g) => acc + ((unreadCounts && g?._id) ? (unreadCounts[g._id] || 0) : 0), 0) > 0 && (
                                         <span className="badge badge-sm badge-error text-white">
-                                            {groups.reduce((acc, g) => acc + (unreadCounts[g._id] || 0), 0)}
+                                            {groups.reduce((acc, g) => acc + ((unreadCounts && g?._id) ? (unreadCounts[g._id] || 0) : 0), 0)}
                                         </span>
                                     )}
                                 </button>
@@ -162,7 +162,7 @@ function Sidebar({ onSelectUser }) {
                             </div>
 
                             {/* Unread Count */}
-                            {(unreadCounts[v._id] > 0 || unreadCounts[String(v._id)] > 0) && (
+                            {unreadCounts && v?._id && (unreadCounts[v._id] > 0 || unreadCounts[String(v._id)] > 0) && (
                                 <div className='ml-auto bg-primary text-primary-content rounded-full min-w-[20px] h-5 px-1 flex items-center justify-center text-xs font-bold shadow-md'>
                                     {unreadCounts[v._id] || unreadCounts[String(v._id)]}
                                 </div>
