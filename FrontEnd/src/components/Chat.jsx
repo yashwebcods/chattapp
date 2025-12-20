@@ -151,8 +151,13 @@ function Chat() {
                     </div>
 
                     <div className='chat-header flex items-center gap-1 sm:gap-2 flex-wrap'>
-                      <time className='text-xs opacity-50'>
+                      <time className='text-xs opacity-50 flex items-center gap-1'>
                         {DateFormated(v.createdAt)}
+                        {isOwnMessage && !v.isDeleted && v.isSeen && (
+                          <span className="text-[10px] text-primary font-bold flex items-center">
+                            Seen
+                          </span>
+                        )}
                       </time>
                       {isOwnMessage && !v.isDeleted && (
                         <div className='flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity'>

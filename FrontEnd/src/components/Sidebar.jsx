@@ -150,14 +150,26 @@ function Sidebar({ onSelectUser }) {
                             </div>
                             <div className='block max-[1023px]:block min-[985px]:hidden text-left min-w-0 flex-1'>
                                 <div className='font-medium truncate'>{v.fullName}</div>
-                                <div className='text-sm text-zinc-400'>
-                                    {onlineUsers.includes(v._id) ? "Online" : "Offline"}
+                                <div className='text-sm text-zinc-400 truncate'>
+                                    {v.lastMessage ? (
+                                        v.lastMessage.messageType === 'image' ? "Photo" :
+                                            v.lastMessage.messageType === 'file' ? "File" :
+                                                v.lastMessage.text
+                                    ) : (
+                                        onlineUsers.includes(v._id) ? "Online" : "Offline"
+                                    )}
                                 </div>
                             </div>
                             <div className='hidden min-[985px]:block text-left min-w-0 flex-1'>
                                 <div className='font-medium truncate'>{v.fullName}</div>
-                                <div className='text-sm text-zinc-400'>
-                                    {onlineUsers.includes(v._id) ? "Online" : "Offline"}
+                                <div className='text-sm text-zinc-400 truncate'>
+                                    {v.lastMessage ? (
+                                        v.lastMessage.messageType === 'image' ? "Photo" :
+                                            v.lastMessage.messageType === 'file' ? "File" :
+                                                v.lastMessage.text
+                                    ) : (
+                                        onlineUsers.includes(v._id) ? "Online" : "Offline"
+                                    )}
                                 </div>
                             </div>
 

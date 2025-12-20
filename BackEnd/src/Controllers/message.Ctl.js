@@ -1,9 +1,9 @@
 import User from '../Models/user.model.js'
-import Message from '../Models/message.model.js'
 import cloudnairy from '../lib/cloudimary.js'
 import { getReseverSocketId, io } from '../lib/socket.js'
 import Group from '../Models/group.model.js'
 import admin from '../lib/firebase.js'
+import Message from '../Models/message.model.js'
 
 /* ============================================================
    GET ALL USERS EXCEPT LOGGED-IN USER
@@ -15,9 +15,68 @@ export const getUser = async (req, res) => {
         const users = await User.find({ _id: { $ne: loginUserId } })
             .select("-password");
 
-        res.status(200).json(users);
+        // Fetch last message for each user
+        const usersWithLastMessage = await Promise.all(users.map(async (user) => {
+            const lastMessage = await Message.findOne({
+                $or: [
+                    { senderId: loginUserId, receiverId: user._id },
+                    { senderId: user._id, receiverId: loginUserId }
+                ]
+            }).sort({ createdAt: -1 });
+
+            // Count unread messages for this user
+            const unreadCount = await Message.countDocuments({
+                senderId: user._id,
+                receiverId: loginUserId,
+                isSeen: false
+            });
+
+            return {
+                ...user.toObject(),
+                lastMessage: lastMessage ? {
+                    text: lastMessage.text,
+                    image: lastMessage.image,
+                    fileUrl: lastMessage.fileUrl,
+                    messageType: lastMessage.messageType,
+                    createdAt: lastMessage.createdAt,
+                    senderId: lastMessage.senderId
+                } : null,
+                unreadCount
+            };
+        }));
+
+        res.status(200).json(usersWithLastMessage);
     } catch (err) {
         res.status(500).json({ message: 'Internal Server Error', error: err.message });
+    }
+};
+
+/* ============================================================
+   MARK MESSAGES AS SEEN
+============================================================ */
+export const markMessagesAsSeen = async (req, res) => {
+    try {
+        const { id: senderId } = req.params;
+        const receiverId = req.user._id;
+
+        await Message.updateMany(
+            { senderId, receiverId, isSeen: false },
+            { $set: { isSeen: true } }
+        );
+
+        // Emit socket event to the original sender to update their Seen indicator
+        const senderSocketId = getReseverSocketId(senderId);
+        if (senderSocketId) {
+            io.to(senderSocketId).emit("messagesSeen", {
+                seenBy: receiverId,
+                fromUser: senderId
+            });
+        }
+
+        res.status(200).json({ message: "Messages marked as seen" });
+    } catch (error) {
+        console.log("Error in markMessagesAsSeen:", error.message);
+        res.status(500).json({ error: "Internal server error" });
     }
 };
 

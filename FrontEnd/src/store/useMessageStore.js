@@ -28,14 +28,26 @@ export const useMessageStore = create(persist((set, get) => ({
         try {
             const res = await axiosInstance.get('/message/users');
             const serverUsers = res.data;
-            const { users: localUsers } = get();
+            const { users: localUsers, unreadCounts } = get();
+
+            // Initialize unread counts from server data
+            const newUnreadCounts = { ...(unreadCounts || {}) };
+            serverUsers.forEach(user => {
+                if (user.unreadCount !== undefined) {
+                    newUnreadCounts[user._id] = user.unreadCount;
+                }
+            });
+            set({ unreadCounts: newUnreadCounts });
 
             if (localUsers.length > 0) {
-                // Merge: Keep local order, add new users from server, update existing ones
+                // Merge: Keep local order, update metadata
                 const localIds = localUsers.map(u => u._id);
                 const orderedUsers = localUsers
-                    .map(localUser => serverUsers.find(su => su._id === localUser._id))
-                    .filter(Boolean); // Keep existing in their order
+                    .map(localUser => {
+                        const su = serverUsers.find(su => su._id === localUser._id);
+                        return su ? { ...localUser, ...su } : null;
+                    })
+                    .filter(Boolean);
 
                 const newUsers = serverUsers.filter(su => !localIds.includes(su._id));
                 set({ users: [...orderedUsers, ...newUsers] });
@@ -46,6 +58,27 @@ export const useMessageStore = create(persist((set, get) => ({
             toast.error(err.response?.data?.message || "Failed to fetch users");
         } finally {
             set({ isUsersLoading: false })
+        }
+    },
+
+    markAsSeen: async (senderId) => {
+        try {
+            await axiosInstance.post(`/message/seen/${senderId}`);
+            // Update local messages to seen
+            const { message, selectedUser } = get();
+            if (selectedUser?._id === senderId) {
+                set({
+                    message: message.map(msg =>
+                        msg.senderId === senderId || msg.senderId?._id === senderId
+                            ? { ...msg, isSeen: true }
+                            : msg
+                    )
+                });
+            }
+            // Clear unread count locally
+            get().clearUnreadCount(senderId);
+        } catch (error) {
+            console.error("Error marking messages as seen:", error);
         }
     },
 
@@ -242,7 +275,7 @@ export const useMessageStore = create(persist((set, get) => ({
 
         socket.on("newMessage", (newMessage) => {
             console.log("📨 newMessage event received:", newMessage);
-            const { selectedUser, message } = get();
+            const { selectedUser, message, markAsSeen, users } = get();
             const authUser = useAuthStore.getState().authUser;
 
             // Check if this is my own message
@@ -257,9 +290,10 @@ export const useMessageStore = create(persist((set, get) => ({
                 newMessage.senderId?._id === selectedUser._id
             );
 
-            // If viewing this chat, add message to current conversation
+            // If viewing this chat, add message to current conversation AND mark as seen
             if (isFromSelectedUser && !message.some(msg => msg._id === newMessage._id)) {
                 set({ message: [...message, newMessage] });
+                markAsSeen(selectedUser._id);
             } else {
                 // Not viewing this chat - show notification and increment unread count
                 const senderName = newMessage.senderId?.fullName || 'Someone';
@@ -279,16 +313,43 @@ export const useMessageStore = create(persist((set, get) => ({
                 }
             }
 
-            // Move sender to top of sidebar
+            // Move sender to top of sidebar AND update its lastMessage
             let sId = newMessage.senderId?._id || newMessage.senderId;
             if (sId) {
                 const sIdStr = sId.toString();
-                const { users } = get();
                 const sender = users.find(u => u._id === sIdStr);
                 if (sender) {
                     const otherUsers = users.filter(u => u._id !== sIdStr);
-                    set({ users: [sender, ...otherUsers] });
+                    const updatedSender = {
+                        ...sender,
+                        lastMessage: {
+                            text: newMessage.text,
+                            image: newMessage.image,
+                            fileUrl: newMessage.fileUrl,
+                            messageType: newMessage.messageType,
+                            createdAt: newMessage.createdAt,
+                            senderId: newMessage.senderId
+                        }
+                    };
+                    set({ users: [updatedSender, ...otherUsers] });
                 }
+            }
+        });
+
+        // Listen for Seen events from other users
+        socket.on("messagesSeen", ({ seenBy, fromUser }) => {
+            console.log("👀 messagesSeen event received:", { seenBy, fromUser });
+            const { message, selectedUser } = get();
+
+            // If we are currently chatting with the person who saw our messages
+            if (selectedUser && selectedUser._id === seenBy) {
+                set({
+                    message: message.map(msg =>
+                        (msg.receiverId === seenBy || msg.receiverId?._id === seenBy) && !msg.isSeen
+                            ? { ...msg, isSeen: true }
+                            : msg
+                    )
+                });
             }
         });
     },
@@ -297,6 +358,7 @@ export const useMessageStore = create(persist((set, get) => ({
         const socket = useAuthStore.getState().socket;
         if (socket) {
             socket.off("newMessage");
+            socket.off("messagesSeen");
             socket.off("connect");
             socket.off("chatCleared");
             socket.off("messagesDeleted");
@@ -521,7 +583,9 @@ export const useMessageStore = create(persist((set, get) => ({
     setSelectedUser: (selectedUser) => {
         const { unreadCounts } = get();
         if (selectedUser && selectedUser._id) {
-            // Clear unread count for this user
+            // Mark messages as seen when opening chat
+            get().markAsSeen(selectedUser._id);
+
             const uId = selectedUser._id.toString();
             const newCounts = { ...(unreadCounts || {}) };
             newCounts[uId] = 0;

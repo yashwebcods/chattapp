@@ -71,7 +71,11 @@ const messageSchema = mongoose.Schema({
                 default: Date.now
             }
         }
-    ]
+    ],
+    isSeen: {
+        type: Boolean,
+        default: false
+    }
 }, {
     timestamps: true
 })
