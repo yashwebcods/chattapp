@@ -192,9 +192,9 @@ export const MessageInput = () => {
       )}
 
       <form onSubmit={handleSendMessage}>
-        <div className='flex-1 flex gap-2 items-center '>
+        <div className='flex-1 flex gap-1 sm:gap-2 items-center '>
           <input type="text"
-            className='flex-1 input input-bordered rounded-lg input-xs sm:input-sm md:input-md'
+            className='flex-1 input input-bordered rounded-xl input-sm sm:input-md'
             placeholder={editingMessage ? 'Edit your message...' : 'Type a message'}
             value={text}
             onChange={(e) => setText(e.target.value)}
@@ -207,17 +207,19 @@ export const MessageInput = () => {
             onChange={handleImage} />
 
           {!editingMessage && (
-            <button type='button' className={`hidden sm:flex btn btn-circle ${imagePreview ? "text-emerald-500" : "text-zinc-400"}`} onClick={() => fileInput.current?.click()
-            } >
-              <Image size={20} />
+            <button type='button'
+              className={`flex btn btn-circle btn-sm sm:btn-md ${imagePreview ? "text-emerald-500" : "text-zinc-400"}`}
+              onClick={() => fileInput.current?.click()}
+            >
+              <Image className="size-5" />
             </button>
           )}
 
           <button type='submit'
-            className={`btn btn-circle btn-xs sm:btn-sm ${editingMessage ? 'btn-info' : ''}`}
+            className={`btn btn-circle btn-sm sm:btn-md ${editingMessage ? 'btn-info' : ''}`}
             disabled={!text.trim() && !imagePreview}
           >
-            <Send size={20} />
+            <Send className="size-5" />
           </button>
         </div>
       </form>
