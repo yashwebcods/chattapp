@@ -79,11 +79,20 @@ export const createGroup = async (req, res) => {
 export const getGroupMessages = async (req, res) => {
     try {
         const { groupId } = req.params;
-        const messages = await Message.find({ groupId })
+        const { limit = 30, before } = req.query;
+
+        const query = { groupId };
+        if (before) {
+            query.createdAt = { $lt: new Date(before) };
+        }
+
+        const messages = await Message.find(query)
+            .sort({ createdAt: -1 })
+            .limit(parseInt(limit))
             .populate("senderId", "fullName image email role")
-            .populate("seenBy", "fullName image")
-            .sort({ createdAt: 1 }); // Sort by oldest first
-        res.status(200).json(messages);
+            .populate("seenBy", "fullName image");
+
+        res.status(200).json(messages.reverse());
     } catch (error) {
         console.log("Error in getGroupMessages controller: ", error.message);
         res.status(500).json({ message: "Internal Server Error" });

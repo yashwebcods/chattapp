@@ -118,16 +118,28 @@ export const markMessagesAsSeen = async (req, res) => {
 export const getMessage = async (req, res) => {
     try {
         const { id: userToChatId } = req.params;
+        const { limit = 30, before } = req.query;
         const myId = req.user._id;
 
-        const message = await Message.find({
+        const query = {
             $or: [
                 { senderId: myId, receiverId: userToChatId },
                 { senderId: userToChatId, receiverId: myId }
             ]
-        }).populate('deletedBy', 'fullName').populate('seenBy', 'fullName image');
+        };
 
-        res.status(200).json(message);
+        if (before) {
+            query.createdAt = { $lt: new Date(before) };
+        }
+
+        const message = await Message.find(query)
+            .sort({ createdAt: -1 })
+            .limit(parseInt(limit))
+            .populate('deletedBy', 'fullName')
+            .populate('seenBy', 'fullName image');
+
+        // Reverse to maintain chronological order for the frontend list
+        res.status(200).json(message.reverse());
     } catch (err) {
         console.log('Error in getMessage:', err.message);
         res.status(500).json({ error: 'Internal server error' });

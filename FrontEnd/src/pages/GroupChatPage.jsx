@@ -18,20 +18,23 @@ function GroupChatPage() {
     const navigate = useNavigate();
     const {
         groups, getGroups, selectedGroup, setSelectedGroup,
-        deleteMessages, setEditingMessage, message, markAsSeen
+        deleteMessages, setEditingMessage, message, markAsSeen,
+        getGroupMessages, hasMoreMessages, isLoadingMore, loadMoreMessages, isMessageLoding
     } = useMessageStore();
-    const { authUser } = useAuthStore();
-    const [groupMessages, setGroupMessages] = useState([]);
+    const { authUser, socket } = useAuthStore();
     const [allUsers, setAllUsers] = useState([]);
     const [selectedUserId, setSelectedUserId] = useState('');
     const [filterPending, setFilterPending] = useState(false);
     const [userSearchTerm, setUserSearchTerm] = useState('');
     const [showHistoryMsg, setShowHistoryMsg] = useState(null);
     const messageEndRef = useRef(null);
+    const topSentinelRef = useRef(null);
+    const scrollContainerRef = useRef(null);
+    const [isInitialLoad, setIsInitialLoad] = useState(true);
 
     const filteredMessages = filterPending
-        ? groupMessages.filter(msg => msg.image || msg.fileUrl)
-        : groupMessages;
+        ? message.filter(msg => msg.image || msg.fileUrl)
+        : message;
 
     useEffect(() => {
         getGroups();
@@ -42,60 +45,60 @@ function GroupChatPage() {
             const group = groups.find(g => g._id === groupId);
             if (group) {
                 setSelectedGroup(group);
-                fetchGroupMessages(groupId);
+                getGroupMessages(groupId);
                 markAsSeen(groupId);
             }
         }
     }, [groups, groupId]);
 
     useEffect(() => {
-        if (messageEndRef.current && groupMessages) {
+        if (messageEndRef.current && message && isInitialLoad) {
             messageEndRef.current.scrollIntoView({ behavior: "smooth" });
         }
-    }, [groupMessages]);
+    }, [message, isInitialLoad]);
 
+    // Handle intersection observer for infinite scrolling
     useEffect(() => {
-        const socket = useAuthStore.getState().socket;
-        if (!socket) return;
+        if (!scrollContainerRef.current) return;
 
-        socket.on('newGroupMessage', (newMessage) => {
-            if (newMessage.groupId === groupId && !groupMessages.some(msg => msg._id === newMessage._id)) {
-                setGroupMessages((prev) => [...prev, newMessage]);
-            }
-        });
+        const observer = new IntersectionObserver(
+            (entries) => {
+                if (entries[0].isIntersecting && hasMoreMessages && !isLoadingMore && !isMessageLoding && !isInitialLoad) {
+                    const container = scrollContainerRef.current;
+                    const previousHeight = container.scrollHeight;
+                    const previousScrollTop = container.scrollTop;
 
-        socket.on('messageEdited', (updatedMessage) => {
-            setGroupMessages((prev) =>
-                prev.map(msg => msg._id === updatedMessage._id ? updatedMessage : msg)
-            );
-        });
+                    loadMoreMessages().then((success) => {
+                        if (success && container) {
+                            requestAnimationFrame(() => {
+                                const newHeight = container.scrollHeight;
+                                container.scrollTop = (newHeight - previousHeight) + previousScrollTop;
+                            });
+                        }
+                    });
+                }
+            },
+            { threshold: 0.1, root: scrollContainerRef.current }
+        );
 
-        socket.on('messagesDeleted', ({ messageIds }) => {
-            setGroupMessages((prev) =>
-                prev.map(msg =>
-                    messageIds.includes(msg._id)
-                        ? { ...msg, isDeleted: true, text: 'This message was deleted', image: null, fileUrl: null }
-                        : msg
-                )
-            );
-        });
+        if (topSentinelRef.current) {
+            observer.observe(topSentinelRef.current);
+        }
 
         return () => {
-            socket.off('newGroupMessage');
-            socket.off('messageEdited');
-            socket.off('messagesDeleted');
+            if (topSentinelRef.current) {
+                observer.unobserve(topSentinelRef.current);
+            }
         };
-    }, [groupId]);
+    }, [hasMoreMessages, isLoadingMore, isMessageLoding, isInitialLoad, loadMoreMessages]);
 
-    const fetchGroupMessages = async (gId) => {
-        try {
-            const response = await fetch(`/api/group/${gId}`, { credentials: 'include' });
-            const data = await response.json();
-            setGroupMessages(data);
-        } catch (error) {
-            console.error('Error fetching messages:', error);
+    useEffect(() => {
+        if (message.length > 0) {
+            setIsInitialLoad(false);
+        } else {
+            setIsInitialLoad(true);
         }
-    };
+    }, [groupId]);
 
     const fetchAllUsers = async () => {
         try {
@@ -103,21 +106,6 @@ function GroupChatPage() {
             setAllUsers(response.data);
         } catch (error) {
             toast.error('Failed to fetch users');
-        }
-    };
-
-    const handleSendMessage = async (msgData) => {
-        try {
-            const response = await axiosInstance.post(`/message/send/undefined`, {
-                ...msgData,
-                groupId: groupId
-            });
-
-            if (response.data) {
-                setGroupMessages([...groupMessages, response.data]);
-            }
-        } catch (error) {
-            toast.error('Failed to send message');
         }
     };
 
@@ -192,11 +180,14 @@ function GroupChatPage() {
                         onDelete={handleDeleteMessage}
                         onShowHistory={setShowHistoryMsg}
                         messageEndRef={messageEndRef}
+                        topSentinelRef={topSentinelRef}
+                        scrollContainerRef={scrollContainerRef}
+                        hasMoreMessages={hasMoreMessages}
+                        isLoadingMore={isLoadingMore}
                     />
 
                     <GroupMessageInput
                         groupId={groupId}
-                        onMessageSent={handleSendMessage}
                     />
                 </div>
             </div>

@@ -18,6 +18,8 @@ export const useMessageStore = create(persist((set, get) => ({
     unreadCounts: {}, // { userId: count, groupId: count }
     sellerIndex: null,
     editingMessage: null, // The message being edited
+    hasMoreMessages: true,
+    isLoadingMore: false,
     setEditingMessage: (msg) => set({ editingMessage: msg }),
     forwardingMessage: null,
     setForwardingMessage: (msg) => set({ forwardingMessage: msg }),
@@ -117,13 +119,45 @@ export const useMessageStore = create(persist((set, get) => ({
 
     getMessage: async (userId) => {
         try {
-            set({ isMessageLoding: true })
-            const res = await axiosInstance(`/message/${userId}`)
-            set({ message: res.data })
+            set({ isMessageLoding: true, hasMoreMessages: true })
+            const res = await axiosInstance.get(`/message/${userId}?limit=30`)
+            set({ message: res.data, hasMoreMessages: res.data.length === 30 })
         } catch (error) {
-            toast.error(error.response.data.message)
+            toast.error(error.response?.data?.message || "Failed to fetch messages")
         } finally {
             set({ isMessageLoding: false })
+        }
+    },
+
+    loadMoreMessages: async () => {
+        const { message, isLoadingMore, hasMoreMessages, selectedUser, selectedGroup } = get();
+        if (isLoadingMore || !hasMoreMessages || message.length === 0) return;
+
+        set({ isLoadingMore: true });
+        try {
+            const firstMessage = message[0];
+            const endpoint = selectedGroup
+                ? `/group/${selectedGroup._id.toString()}`
+                : `/message/${selectedUser._id.toString()}`;
+
+            const res = await axiosInstance.get(`${endpoint}?limit=30&before=${firstMessage.createdAt}`);
+            const newMessages = res.data;
+
+            if (newMessages.length > 0) {
+                set({
+                    message: [...newMessages, ...message],
+                    hasMoreMessages: newMessages.length === 30
+                });
+                return true; // Successfully loaded more
+            } else {
+                set({ hasMoreMessages: false });
+                return false;
+            }
+        } catch (error) {
+            console.error("Error loading more messages:", error);
+            return false;
+        } finally {
+            set({ isLoadingMore: false });
         }
     },
 
@@ -602,9 +636,9 @@ export const useMessageStore = create(persist((set, get) => ({
 
     getGroupMessages: async (groupId) => {
         try {
-            set({ isMessageLoding: true })
-            const res = await axiosInstance.get(`/group/${groupId}`)
-            set({ message: res.data })
+            set({ isMessageLoding: true, hasMoreMessages: true })
+            const res = await axiosInstance.get(`/group/${groupId}?limit=30`)
+            set({ message: res.data, hasMoreMessages: res.data.length === 30 })
         } catch (error) {
             toast.error(error?.response?.data?.message || "Failed to fetch group messages")
         } finally {

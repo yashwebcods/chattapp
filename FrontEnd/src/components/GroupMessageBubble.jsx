@@ -58,7 +58,7 @@ const GroupMessageBubble = ({ msg, onEdit, onDelete, onShowHistory, messageEndRe
         <div className={`chat ${isOwnMessage ? "chat-end" : "chat-start"} group/msg`} ref={messageEndRef}>
             <div className='chat-image avatar'>
                 <div className='size-10 rounded-full border'>
-                    <img src={msg.senderId?.image || '/avatar.png'} alt={msg.senderId?.fullName} />
+                    <img loading="lazy" src={msg.senderId?.image || '/avatar.png'} alt={msg.senderId?.fullName} />
                 </div>
             </div>
             <div className='chat-header mb-1 flex items-center gap-2'>
@@ -86,7 +86,7 @@ const GroupMessageBubble = ({ msg, onEdit, onDelete, onShowHistory, messageEndRe
             </div>
             <div className={`chat-bubble flex flex-col ${msg.isDeleted ? 'italic opacity-70' : ''}`}>
                 {msg.image && (
-                    <img src={msg.image} className='max-w-[200px] rounded mb-2' alt="message" />
+                    <img src={msg.image} loading="lazy" className='max-w-[200px] rounded mb-2' alt="message" />
                 )}
                 {msg.fileUrl && (
                     <a href={msg.fileUrl} download={msg.fileName || 'file'} target="_blank" rel="noopener noreferrer"

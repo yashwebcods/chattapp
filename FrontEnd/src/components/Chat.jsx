@@ -28,12 +28,18 @@ function Chat() {
     editMessage,
     setEditingMessage,
     setForwardingMessage,
+    hasMoreMessages,
+    isLoadingMore,
+    loadMoreMessages,
   } = useMessageStore();
 
   const { authUser } = useAuthStore();
   const [showHistoryMsg, setShowHistoryMsg] = React.useState(null);
 
   const messageEndRef = useRef(null);
+  const topSentinelRef = useRef(null);
+  const scrollContainerRef = useRef(null);
+  const [isInitialLoad, setIsInitialLoad] = React.useState(true);
 
   useEffect(() => {
     if (selectedUser?._id) {
@@ -53,10 +59,55 @@ function Chat() {
   }, [selectedUser?._id, selectedGroup?._id]);
 
   useEffect(() => {
-    if (messageEndRef.current && message && !isSelectionMode) {
+    if (messageEndRef.current && message && !isSelectionMode && isInitialLoad) {
       messageEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
-  }, [message, isSelectionMode]);
+  }, [message, isSelectionMode, isInitialLoad]);
+
+  // Handle intersection observer for infinite scrolling
+  useEffect(() => {
+    if (!scrollContainerRef.current) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMoreMessages && !isLoadingMore && !isMessageLoding && !isInitialLoad) {
+          const container = scrollContainerRef.current;
+          const previousHeight = container.scrollHeight;
+          const previousScrollTop = container.scrollTop;
+
+          loadMoreMessages().then((success) => {
+            if (success && container) {
+              // Maintain scroll position after content is prepended
+              // We use requestAnimationFrame to ensure the DOM has updated
+              requestAnimationFrame(() => {
+                const newHeight = container.scrollHeight;
+                container.scrollTop = (newHeight - previousHeight) + previousScrollTop;
+              });
+            }
+          });
+        }
+      },
+      { threshold: 0.1, root: scrollContainerRef.current }
+    );
+
+    if (topSentinelRef.current) {
+      observer.observe(topSentinelRef.current);
+    }
+
+    return () => {
+      if (topSentinelRef.current) {
+        observer.unobserve(topSentinelRef.current);
+      }
+    };
+  }, [hasMoreMessages, isLoadingMore, isMessageLoding, isInitialLoad, loadMoreMessages]);
+
+  useEffect(() => {
+    if (message.length > 0) {
+      setIsInitialLoad(false);
+    } else {
+      setIsInitialLoad(true);
+    }
+  }, [selectedUser?._id, selectedGroup?._id]);
 
   const handleCopyMessage = (text) => {
     if (!text) return;
@@ -100,8 +151,15 @@ function Chat() {
         </div>
       )}
 
-      <div className='flex-1 overflow-y-auto'>
+      <div className='flex-1 overflow-y-auto' ref={scrollContainerRef}>
         <div className='p-2 sm:p-4 space-y-3 sm:space-y-4'>
+          {/* Sentinel for infinite scrolling */}
+          {hasMoreMessages && (
+            <div ref={topSentinelRef} className="h-8 flex items-center justify-center">
+              {isLoadingMore && <Loader className="size-5 animate-spin text-primary opacity-70" />}
+            </div>
+          )}
+
           {message.length === 0 ? (
             <div className='text-center py-12'>
               <p className='text-base-content/60'>
@@ -138,6 +196,7 @@ function Chat() {
                     <div className='chat-image avatar flex-shrink-0'>
                       <div className='size-8 sm:size-10 rounded-full border'>
                         <img
+                          loading="lazy"
                           src={
                             isOwnMessage
                               ? authUser.image || '/avatar.png'
@@ -216,6 +275,7 @@ function Chat() {
                             {v.image && (
                               <img
                                 src={v.image}
+                                loading="lazy"
                                 className='max-w-[150px] sm:max-w-[200px] rounded mb-2'
                                 alt="Message content"
                               />
