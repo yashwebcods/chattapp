@@ -37,7 +37,7 @@ const messageSchema = mongoose.Schema({
     },
     cloudinaryResourceType: {
         type: String,
-        enum: ['image', 'raw', 'video', 'supabase', null],
+        enum: ['image', 'raw', 'video', 'supabase', 'external', null],
         default: null
     },
     // System message support

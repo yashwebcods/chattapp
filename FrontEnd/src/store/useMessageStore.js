@@ -173,11 +173,26 @@ export const useMessageStore = create(persist((set, get) => ({
         set({ isSending: true });
 
         try {
+            if (selectedGroup && !selectedGroup?._id) {
+                toast.error("Invalid group selected");
+                return null;
+            }
+
+            if (selectedUser && !selectedUser?._id) {
+                toast.error("Invalid user selected");
+                return null;
+            }
+
             const endpoint = selectedGroup
-                ? `/message/send/undefined`
+                ? `/message/send/${selectedGroup._id}`
                 : selectedUser
                     ? `/message/send/${selectedUser._id}`
-                    : `/message/send/undefined`;
+                    : null;
+
+            if (!endpoint) {
+                toast.error("Invalid target for message");
+                return null;
+            }
 
             const data = selectedGroup
                 ? { ...messageData, groupId: selectedGroup._id }
@@ -246,6 +261,11 @@ export const useMessageStore = create(persist((set, get) => ({
         };
 
         try {
+            if (!targetId) {
+                toast.error("Invalid forward target");
+                return null;
+            }
+
             const endpoint = isGroup
                 ? `/message/send/undefined`
                 : `/message/send/${targetId}`;
@@ -253,6 +273,11 @@ export const useMessageStore = create(persist((set, get) => ({
             const data = isGroup
                 ? { ...messageData, groupId: targetId }
                 : messageData;
+
+            if (isGroup && !data.groupId) {
+                toast.error("Invalid group selected");
+                return null;
+            }
 
             const res = await axiosInstance.post(endpoint, data);
 
@@ -282,9 +307,11 @@ export const useMessageStore = create(persist((set, get) => ({
             }
 
             // toast.success("Message forwarded"); // Removed for batch forwarding cleanliness
+            return res.data;
         } catch (error) {
             console.error('Forward message error:', error);
             toast.error(error.response?.data?.message || "Failed to forward message");
+            return null;
         }
     },
 

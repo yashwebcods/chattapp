@@ -1,4 +1,5 @@
 import User from '../Models/user.model.js'
+import mongoose from 'mongoose'
 import cloudnairy from '../lib/cloudimary.js'
 import { getReseverSocketId, io } from '../lib/socket.js'
 import Group from '../Models/group.model.js'
@@ -157,6 +158,16 @@ export const sendMessage = async (req, res) => {
         const { text, image, file, fileName, fileType, fileSize, groupId } = req.body;
         const { id: receiverId } = req.params; // "undefined" for group messages
         const senderId = req.user._id;
+
+        const isValidObjectId = (value) => typeof value === 'string' && mongoose.Types.ObjectId.isValid(value);
+        const hasValidReceiver = receiverId && receiverId !== "undefined" && isValidObjectId(receiverId);
+        const hasValidGroup = groupId && isValidObjectId(groupId);
+
+        if (!hasValidReceiver && !hasValidGroup) {
+            return res.status(400).json({
+                message: "Invalid message target. Provide a valid receiverId in URL or a valid groupId in body."
+            });
+        }
 
         let imageUrl = null;
         let fileUrl = null;
