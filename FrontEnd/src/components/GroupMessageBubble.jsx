@@ -1,6 +1,6 @@
 import React from 'react';
 import { DateFormated, getDownloadUrl } from '../lib/utills';
-import { Pencil, Trash2, Clock, Copy, Share2, File, CheckCheck, Download } from 'lucide-react';
+import { Pencil, Trash2, Clock, Copy, Share2, File, CheckCheck, Download, Loader } from 'lucide-react';
 import { useMessageStore } from '../store/useMessageStore';
 import { useAuthStore } from '../store/useAuthStore';
 import toast from 'react-hot-toast';
@@ -97,9 +97,17 @@ const GroupMessageBubble = ({ msg, onEdit, onDelete, onShowHistory, messageEndRe
             </div>
             <div className={`chat-bubble flex flex-col ${msg.isDeleted ? 'italic opacity-70' : ''}`}>
                 {msg.isUploading ? (
-                    <div className="flex items-center gap-2 p-3 bg-base-300 rounded-lg">
-                        <span className="loading loading-spinner loading-sm"></span>
-                        <span className="text-sm opacity-70">Uploading...</span>
+                    // Upload Progress Indicator - matching normal chat
+                    <div className="flex items-center gap-3 py-2">
+                        <Loader className="size-5 animate-spin text-primary" />
+                        <div className="flex flex-col gap-1">
+                            <span className="text-sm font-medium">
+                                {msg.file ? 'Uploading file...' : 'Uploading image...'}
+                            </span>
+                            <span className="text-xs opacity-60">
+                                {msg.fileName || 'Please wait'}
+                            </span>
+                        </div>
                     </div>
                 ) : (
                     <>
