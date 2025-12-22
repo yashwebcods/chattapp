@@ -1,6 +1,7 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getMessaging, onBackgroundMessage } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging.js";
+importScripts('https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js');
+importScripts('https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging-compat.js');
 
+// Initialize Firebase
 const firebaseConfig = {
     apiKey: "AIzaSyCGjZ8qe8PAUA2PrPW1x1zN94SihuujZIU",
     authDomain: "chatapp-b2d9e.firebaseapp.com",
@@ -10,10 +11,11 @@ const firebaseConfig = {
     appId: "1:72152571656:web:1a506cbda0a8447f7916bd"
 };
 
-const app = initializeApp(firebaseConfig);
-const messaging = getMessaging(app);
+firebase.initializeApp(firebaseConfig);
+const messaging = firebase.messaging();
 
-onBackgroundMessage(messaging, (payload) => {
+// Handle background messages
+messaging.onBackgroundMessage((payload) => {
     console.log('[firebase-messaging-sw.js] Received background message ', payload);
     
     const notificationTitle = payload.notification?.title || 'New Message';
@@ -45,7 +47,7 @@ self.addEventListener('notificationclick', (event) => {
                 .then((clientList) => {
                     // Focus existing window if open
                     for (const client of clientList) {
-                        if (client.url.includes('localhost') || client.url.includes(window.location.origin)) {
+                        if (client.url.includes('chatt-app-ohyt.onrender.com') || client.url.includes('localhost')) {
                             return client.focus();
                         }
                     }
