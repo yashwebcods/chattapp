@@ -350,9 +350,8 @@ export const useMessageStore = create(persist((set, get) => ({
                 set({ message: [...message, newMessage] });
                 get().markAsSeen(selectedUser._id);
             } else {
-                // Not viewing this chat - show notification and increment unread count
-                const senderName = newMessage.senderId?.fullName || 'Someone';
-                toast.success(`New message from ${senderName}`, { duration: 2000 });
+                // Not viewing this chat - increment unread count
+                // (Firebase push notification will handle the notification)
 
                 // Increment unread count for this user
                 let senderId = newMessage.senderId?._id || newMessage.senderId;
