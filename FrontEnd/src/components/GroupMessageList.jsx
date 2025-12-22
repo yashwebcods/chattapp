@@ -6,9 +6,11 @@ const GroupMessageList = ({ messages, onEdit, onDelete, onShowHistory, messageEn
 
     useEffect(() => {
         // Auto-scroll to bottom when new messages are added (but not during initial load)
-        if (messageEndRef.current && messages.length > prevMessagesLengthRef.current) {
+        if (messageEndRef.current && typeof messageEndRef.current.scrollIntoView === 'function' && messages.length > prevMessagesLengthRef.current) {
             setTimeout(() => {
-                messageEndRef.current.scrollIntoView({ behavior: 'smooth' });
+                if (messageEndRef.current && typeof messageEndRef.current.scrollIntoView === 'function') {
+                    messageEndRef.current.scrollIntoView({ behavior: 'smooth' });
+                }
             }, 100);
         }
         prevMessagesLengthRef.current = messages.length;

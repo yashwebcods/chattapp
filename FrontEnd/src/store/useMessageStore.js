@@ -455,6 +455,10 @@ export const useMessageStore = create(persist((set, get) => ({
         console.log("subscribeToGroupMessages called. Socket:", socket ? "Connected" : "Null");
         if (!socket) return;
 
+        // Prevent duplicate listeners (subscribeToGroupMessages can be called multiple times)
+        socket.off("newGroupMessage");
+        socket.off("groupUpdate");
+
         socket.on("newGroupMessage", (newMessage) => {
             console.log("📨 newGroupMessage event received:", newMessage);
             const { selectedGroup, groups, unreadCounts, message } = get();

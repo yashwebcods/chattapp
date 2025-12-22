@@ -17,12 +17,16 @@ const messaging = firebase.messaging();
 messaging.onBackgroundMessage((payload) => {
     console.log('[firebase-messaging-sw.js] Received background message ', payload);
 
-    // Extract data from message payload
-    const { title, body, type, id } = payload.data;
+    const data = payload?.data || {};
+    const notification = payload?.notification || {};
+    const title = notification.title || data.title || 'New Message';
+    const body = notification.body || data.body || '';
+    const type = data.type;
+    const id = data.id;
 
-    // const notificationTitle = title || 'New Message';
+    const notificationTitle = title;
     const notificationOptions = {
-        body: body || '',
+        body,
         icon: '/favicon.ico',   // Your app icon
         badge: '/favicon.ico',  // Optional badge
         tag: type ? `${type}-${id}` : 'chat-message',
@@ -39,23 +43,33 @@ self.addEventListener('notificationclick', (event) => {
     event.notification.close();
     
     const data = event.notification.data;
-    const url = data
+    const path = data
         ? (data.type === 'group'
             ? `/group/${data.id}`
             : `/`)
         : `/`;
+    const urlToOpen = `${self.location.origin}${path}`;
 
     event.waitUntil(
         clients.matchAll({ type: 'window', includeUncontrolled: true })
-            .then((clientList) => {
+            .then(async (clientList) => {
+                // If there is already an open tab, navigate it to the target route
                 for (const client of clientList) {
-                    if (client.url.includes('chatt-app-ohyt.onrender.com') ||
-                        client.url.includes('localhost')) {
+                    if (client.url.includes(self.location.origin)) {
+                        try {
+                            if (typeof client.navigate === 'function') {
+                                await client.navigate(urlToOpen);
+                            }
+                        } catch (e) {
+                            // ignore navigation errors, still try to focus
+                        }
                         return client.focus();
                     }
                 }
+
+                // Otherwise open a new tab
                 if (clients.openWindow) {
-                    return clients.openWindow(url);
+                    return clients.openWindow(urlToOpen);
                 }
             })
     );

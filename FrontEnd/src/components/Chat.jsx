@@ -62,12 +62,14 @@ function Chat() {
   }, [selectedUser?._id, selectedGroup?._id]);
 
   useEffect(() => {
-    if (messageEndRef.current && message && !isSelectionMode) {
+    if (messageEndRef.current && typeof messageEndRef.current.scrollIntoView === 'function' && message && !isSelectionMode) {
       // Always scroll to bottom when messages change, but be smarter about it
       const shouldScroll = isInitialLoad || message.length > prevMessagesLengthRef.current;
       if (shouldScroll) {
         setTimeout(() => {
-          messageEndRef.current.scrollIntoView({ behavior: 'smooth' });
+          if (messageEndRef.current && typeof messageEndRef.current.scrollIntoView === 'function') {
+            messageEndRef.current.scrollIntoView({ behavior: 'smooth' });
+          }
         }, 100);
       }
     }

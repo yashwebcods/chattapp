@@ -145,6 +145,7 @@ export const getGroups = async (req, res) => {
             // Calculate unread count for this group
             const unreadCount = await Message.countDocuments({
                 groupId: group._id,
+                senderId: { $ne: userId },
                 seenBy: { $ne: userId }
             });
 

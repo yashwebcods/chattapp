@@ -53,7 +53,7 @@ function GroupChatPage() {
     }, [groups, groupId]);
 
     useEffect(() => {
-        if (messageEndRef.current && message && isInitialLoad) {
+        if (messageEndRef.current && typeof messageEndRef.current.scrollIntoView === 'function' && message && isInitialLoad) {
             messageEndRef.current.scrollIntoView({ behavior: "smooth" });
         }
     }, [message, isInitialLoad]);
