@@ -329,19 +329,17 @@ export const sendMessage = async (req, res) => {
                         notificationTitle = `New message from ${group.name}`;
                     }
                 }
-
                 const notificationPayload = {
-                    notification: {
-                        title: notificationTitle,
-                        body: text || (image ? 'Sent an image' : 'Sent a file')
-                    },
                     data: {
+                        title: notificationTitle,
+                        body: text || (image ? 'Sent an image' : 'Sent a file'),
                         messageId: newMessage._id.toString(),
                         senderId: senderId.toString(),
                         type: groupId ? 'group' : 'chat',
                         id: groupId ? groupId.toString() : senderId.toString()
                     }
                 };
+
 
                 // DIRECT MESSAGE - Send notification if receiver is offline
                 if (receiverId && receiverId !== "undefined") {
