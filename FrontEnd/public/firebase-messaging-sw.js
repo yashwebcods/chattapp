@@ -20,7 +20,7 @@ messaging.onBackgroundMessage((payload) => {
     // Extract data from message payload
     const { title, body, type, id } = payload.data;
 
-    const notificationTitle = title || 'New Message';
+    // const notificationTitle = title || 'New Message';
     const notificationOptions = {
         body: body || '',
         icon: '/favicon.ico',   // Your app icon
