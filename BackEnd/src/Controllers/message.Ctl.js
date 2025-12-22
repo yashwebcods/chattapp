@@ -453,10 +453,17 @@ export const deleteMessages = async (req, res) => {
         for (const msg of messages) {
             // 1. Handle Images (Cloudinary)
             if (msg.image) {
-                const resType = msg.cloudinaryResourceType || 'image';
-                const publicId = extractPublicId(msg.image, resType);
-                if (publicId) {
-                    await cloudnairy.uploader.destroy(publicId, { resource_type: resType });
+                // Only delete from Cloudinary if it's not a Supabase file
+                if (msg.cloudinaryResourceType !== 'supabase') {
+                    try {
+                        const resType = msg.cloudinaryResourceType || 'image';
+                        const publicId = extractPublicId(msg.image, resType);
+                        if (publicId) {
+                            await cloudnairy.uploader.destroy(publicId, { resource_type: resType });
+                        }
+                    } catch (err) {
+                        console.error('Error deleting image from Cloudinary:', err);
+                    }
                 }
             }
 
@@ -553,17 +560,56 @@ export const clearChat = async (req, res) => {
             ]
         });
 
-        // Delete files from Cloudinary
+        // Delete files from storage (Cloudinary or Supabase)
         for (const msg of messages) {
+            // 1. Handle Images (Cloudinary)
             if (msg.image) {
-                const resType = msg.cloudinaryResourceType || 'image';
-                const publicId = extractPublicId(msg.image, resType);
-                if (publicId) await cloudnairy.uploader.destroy(publicId, { resource_type: resType });
+                // Only delete from Cloudinary if it's not a Supabase file
+                if (msg.cloudinaryResourceType !== 'supabase') {
+                    try {
+                        const resType = msg.cloudinaryResourceType || 'image';
+                        const publicId = extractPublicId(msg.image, resType);
+                        if (publicId) {
+                            await cloudnairy.uploader.destroy(publicId, { resource_type: resType });
+                        }
+                    } catch (err) {
+                        console.error('Error deleting image from Cloudinary:', err);
+                    }
+                }
             }
+
+            // 2. Handle Files (Supabase OR Legacy Cloudinary)
             if (msg.fileUrl) {
-                const resType = msg.cloudinaryResourceType || 'raw';
-                const publicId = extractPublicId(msg.fileUrl, resType);
-                if (publicId) await cloudnairy.uploader.destroy(publicId, { resource_type: resType });
+                if (msg.cloudinaryResourceType === 'supabase') {
+                    // Delete from Supabase
+                    try {
+                        const fileUrlObj = new URL(msg.fileUrl);
+                        const pathParts = fileUrlObj.pathname.split(`/${bucketName}/`);
+                        if (pathParts.length > 1) {
+                            const filePath = pathParts[1];
+                            const { error } = await supabase
+                                .storage
+                                .from(bucketName)
+                                .remove([filePath]);
+
+                            if (error) console.error('Error deleting file from Supabase:', error);
+                            else console.log('✅ File deleted from Supabase:', filePath);
+                        }
+                    } catch (err) {
+                        console.error('Error parsing Supabase URL for deletion:', err);
+                    }
+                } else {
+                    // Legacy: Delete from Cloudinary
+                    try {
+                        const resType = msg.cloudinaryResourceType || 'raw';
+                        const publicId = extractPublicId(msg.fileUrl, resType);
+                        if (publicId) {
+                            await cloudnairy.uploader.destroy(publicId, { resource_type: resType });
+                        }
+                    } catch (err) {
+                        console.error('Error deleting file from Cloudinary:', err);
+                    }
+                }
             }
         }
 
@@ -615,17 +661,56 @@ export const clearGroupChat = async (req, res) => {
         // Find messages to delete to clean up Cloudinary
         const messages = await Message.find({ groupId });
 
-        // Delete files from Cloudinary
+        // Delete files from storage (Cloudinary or Supabase)
         for (const msg of messages) {
+            // 1. Handle Images (Cloudinary)
             if (msg.image) {
-                const resType = msg.cloudinaryResourceType || 'image';
-                const publicId = extractPublicId(msg.image, resType);
-                if (publicId) await cloudnairy.uploader.destroy(publicId, { resource_type: resType });
+                // Only delete from Cloudinary if it's not a Supabase file
+                if (msg.cloudinaryResourceType !== 'supabase') {
+                    try {
+                        const resType = msg.cloudinaryResourceType || 'image';
+                        const publicId = extractPublicId(msg.image, resType);
+                        if (publicId) {
+                            await cloudnairy.uploader.destroy(publicId, { resource_type: resType });
+                        }
+                    } catch (err) {
+                        console.error('Error deleting image from Cloudinary:', err);
+                    }
+                }
             }
+
+            // 2. Handle Files (Supabase OR Legacy Cloudinary)
             if (msg.fileUrl) {
-                const resType = msg.cloudinaryResourceType || 'raw';
-                const publicId = extractPublicId(msg.fileUrl, resType);
-                if (publicId) await cloudnairy.uploader.destroy(publicId, { resource_type: resType });
+                if (msg.cloudinaryResourceType === 'supabase') {
+                    // Delete from Supabase
+                    try {
+                        const fileUrlObj = new URL(msg.fileUrl);
+                        const pathParts = fileUrlObj.pathname.split(`/${bucketName}/`);
+                        if (pathParts.length > 1) {
+                            const filePath = pathParts[1];
+                            const { error } = await supabase
+                                .storage
+                                .from(bucketName)
+                                .remove([filePath]);
+
+                            if (error) console.error('Error deleting file from Supabase:', error);
+                            else console.log('✅ File deleted from Supabase:', filePath);
+                        }
+                    } catch (err) {
+                        console.error('Error parsing Supabase URL for deletion:', err);
+                    }
+                } else {
+                    // Legacy: Delete from Cloudinary
+                    try {
+                        const resType = msg.cloudinaryResourceType || 'raw';
+                        const publicId = extractPublicId(msg.fileUrl, resType);
+                        if (publicId) {
+                            await cloudnairy.uploader.destroy(publicId, { resource_type: resType });
+                        }
+                    } catch (err) {
+                        console.error('Error deleting file from Cloudinary:', err);
+                    }
+                }
             }
         }
 
