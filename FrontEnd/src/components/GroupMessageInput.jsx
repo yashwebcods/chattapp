@@ -4,7 +4,7 @@ import { Send, Image as ImageIcon, Paperclip, X, File, AtSign } from 'lucide-rea
 import toast from 'react-hot-toast';
 
 const GroupMessageInput = ({ groupId }) => {
-    const { selectedGroup, sendMessages, isSending } = useMessageStore();
+    const { selectedGroup, sendMessages, isSending, editingMessage, setEditingMessage, editMessage } = useMessageStore();
     const [text, setText] = useState('');
     const [imagePreview, setImagePreview] = useState(null);
     const [filePreview, setFilePreview] = useState(null);
@@ -17,6 +17,13 @@ const GroupMessageInput = ({ groupId }) => {
     const inputRef = useRef(null);
 
     const members = selectedGroup?.members || [];
+
+    // Set text when editing message
+    useEffect(() => {
+        if (editingMessage) {
+            setText(editingMessage.text);
+        }
+    }, [editingMessage]);
 
     const handleTextChange = (e) => {
         const value = e.target.value;
@@ -82,24 +89,40 @@ const GroupMessageInput = ({ groupId }) => {
         const currentFileName = fileName;
 
         try {
-            const result = await sendMessages({
-                text: text.trim(),
-                image: imagePreview,
-                file: filePreview,
-                fileName
-            });
-
-            // Only clear previews if message was sent successfully (result is not null)
-            if (result !== null) {
+            if (editingMessage) {
+                // Handle editing
+                const messageText = text.trim();
+                await editMessage(editingMessage._id, messageText);
+                setEditingMessage(null);
+                
+                // Clear input after editing
                 setText('');
                 setImagePreview(null);
                 setFilePreview(null);
                 setFileName('');
                 if (fileInputRef.current) fileInputRef.current.value = '';
                 if (documentFileInputRef.current) documentFileInputRef.current.value = '';
+            } else {
+                // Handle sending new message
+                const result = await sendMessages({
+                    text: text.trim(),
+                    image: imagePreview,
+                    file: filePreview,
+                    fileName
+                });
+
+                // Only clear previews if message was sent successfully (result is not null)
+                if (result !== null) {
+                    setText('');
+                    setImagePreview(null);
+                    setFilePreview(null);
+                    setFileName('');
+                    if (fileInputRef.current) fileInputRef.current.value = '';
+                    if (documentFileInputRef.current) documentFileInputRef.current.value = '';
+                }
             }
         } catch (error) {
-            console.error('Failed to send message:', error);
+            console.error('Failed to send/edit message:', error);
             toast.error('Failed to send message');
             // Values are preserved since we didn't clear them
         }
@@ -142,13 +165,23 @@ const GroupMessageInput = ({ groupId }) => {
                 </div>
             )}
 
+            {editingMessage && (
+                <div className='mb-3 flex items-center gap-2 p-2 bg-info/10 rounded-lg'>
+                    <span className='text-xs opacity-70'>Editing message:</span>
+                    <span className='text-xs opacity-70 truncate'>{editingMessage.text}</span>
+                    <button onClick={() => setEditingMessage(null)} className='btn btn-xs btn-ghost ml-auto'>
+                        <X className='size-3' />
+                    </button>
+                </div>
+            )}
+
             <form onSubmit={handleSubmit} className='flex gap-2'>
                 <input
                     ref={inputRef}
                     type='text'
                     value={text}
                     onChange={handleTextChange}
-                    placeholder='Type a message...'
+                    placeholder={editingMessage ? 'Edit your message...' : 'Type a message...'}
                     className='input input-bordered flex-1'
                 />
                 <input type='file' accept='image/*' ref={fileInputRef} onChange={handleImageChange} className='hidden' />
@@ -160,8 +193,8 @@ const GroupMessageInput = ({ groupId }) => {
                 <button type='button' onClick={() => fileInputRef.current?.click()} className='btn btn-circle btn-ghost' title='Attach image'>
                     <ImageIcon className='size-5' />
                 </button>
-                <button type='submit' className='btn btn-primary' disabled={isSending || (!text.trim() && !imagePreview && !filePreview)}>
-                    {isSending ? <span className='loading loading-spinner loading-xs'></span> : <Send className='size-5' />}
+                <button type='submit' className={`btn ${editingMessage ? 'btn-info' : 'btn-primary'}`} disabled={isSending || (!text.trim() && !imagePreview && !filePreview)}>
+                    {isSending && (imagePreview || filePreview) ? <span className='loading loading-spinner loading-xs'></span> : <Send className='size-5' />}
                 </button>
             </form>
         </div>

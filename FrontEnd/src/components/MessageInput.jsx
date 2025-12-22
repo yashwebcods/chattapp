@@ -261,7 +261,7 @@ export const MessageInput = () => {
             className={`btn btn-circle btn-sm sm:btn-md ${editingMessage ? 'btn-info' : 'btn-primary'}`}
             disabled={isSending || (!text.trim() && !imagePreview && !filePreview)}
           >
-            {isSending ? <span className='loading loading-spinner loading-xs'></span> : <Send className="size-5" />}
+            {isSending && (imagePreview || filePreview) ? <span className='loading loading-spinner loading-xs'></span> : <Send className="size-5" />}
           </button>
         </div>
       </form>

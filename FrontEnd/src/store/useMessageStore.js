@@ -170,14 +170,6 @@ export const useMessageStore = create(persist((set, get) => ({
         const socket = useAuthStore.getState().socket;
         const authUser = useAuthStore.getState().authUser;
 
-        console.log('sendMessages called:', {
-            selectedUser: selectedUser?.fullName,
-            selectedGroup: selectedGroup?.name,
-            messageData,
-            socketConnected: !!socket,
-            authUser: authUser?.fullName
-        });
-
         set({ isSending: true });
 
         try {
@@ -190,8 +182,6 @@ export const useMessageStore = create(persist((set, get) => ({
             const data = selectedGroup
                 ? { ...messageData, groupId: selectedGroup._id }
                 : messageData;
-
-            console.log('Sending message to endpoint:', endpoint, 'data:', data);
 
             // Create temporary message for immediate display
             const tempMessage = {
@@ -237,7 +227,6 @@ export const useMessageStore = create(persist((set, get) => ({
                 }
             }, 100);
 
-            console.log('Message sent successfully');
         } catch (error) {
             console.error('Send message error:', error);
             toast.error(error.response?.data?.message || "Failed to send message");
@@ -317,9 +306,7 @@ export const useMessageStore = create(persist((set, get) => ({
         }
 
         if (!socket.connected) {
-            console.log("Socket not connected, waiting for connection...");
             socket.once('connect', () => {
-                console.log("Socket connected, subscribing to messages...");
                 get().setupMessageListener(socket);
             });
             return;
@@ -504,7 +491,7 @@ export const useMessageStore = create(persist((set, get) => ({
             const isMyMessage = newMessage.senderId === authUser._id ||
                 newMessage.senderId?._id === authUser._id;
 
-            if (!(isMyMessage || isCurrentGroup)) {
+            if (!isMyMessage && !isCurrentGroup) {
                 // Get group name - format it like in GroupsListPage
                 let groupName = 'a group';
                 if (newMessage.groupId?.sellerId?.companyName && newMessage.groupId?.sellerIndex !== undefined) {

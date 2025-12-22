@@ -343,7 +343,12 @@ function Chat() {
                                     <time className='text-[10px] opacity-50 flex items-center gap-1 leading-none'>
                                       {DateFormated(v.createdAt)}
                                       {isOwnMessage && !v.isDeleted && v.seenBy?.length > 0 && (
-                                        <CheckCheck className="size-3 text-primary" />
+                                        <div className="flex items-center gap-1">
+                                          <CheckCheck className="size-3 text-primary" />
+                                          <span className="text-[8px] opacity-60">
+                                            {selectedUser?.fullName || 'Seen'}
+                                          </span>
+                                        </div>
                                       )}
                                     </time>
                                   </div>
