@@ -280,6 +280,19 @@ function Chat() {
                                   This message was deleted by{' '}
                                   {v.deletedBy?.fullName || 'user'}
                                 </p>
+                              ) : v.isUploading ? (
+                                // Upload Progress Indicator
+                                <div className="flex items-center gap-3 py-2">
+                                  <Loader className="size-5 animate-spin text-primary" />
+                                  <div className="flex flex-col gap-1">
+                                    <span className="text-sm font-medium">
+                                      {v.file ? 'Uploading file...' : 'Uploading image...'}
+                                    </span>
+                                    <span className="text-xs opacity-60">
+                                      {v.fileName || 'Please wait'}
+                                    </span>
+                                  </div>
+                                </div>
                               ) : (
                                 <>
                                   {v.image && (

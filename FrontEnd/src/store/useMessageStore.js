@@ -194,7 +194,8 @@ export const useMessageStore = create(persist((set, get) => ({
                 senderId: authUser,
                 ...(selectedGroup ? { groupId: selectedGroup._id } : { receiverId: selectedUser._id }),
                 createdAt: new Date().toISOString(),
-                isTemp: true
+                isTemp: true,
+                isUploading: !!(messageData.image || messageData.file) // Show loader for file/image uploads
             };
 
             // Add temporary message to state immediately
