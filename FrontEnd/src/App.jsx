@@ -4,8 +4,7 @@ import { useThemeStore } from "./store/useThemeStore";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { Toaster, toast } from "react-hot-toast";
 import { Loader2 as Loader } from "lucide-react";
-import { requestPermission, messaging } from "./lib/firebase";
-import { onMessage } from "firebase/messaging";
+import { requestPermission, onForegroundMessage } from "./lib/firebase";
 import { Suspense, lazy } from "react";
 
 // Lazy load pages
@@ -42,15 +41,7 @@ function App() {
     });
 
     // Handle Foreground Messages
-    const unsubscribeForeground = onMessage(messaging, (payload) => {
-      console.log('Message received. ', payload);
-      toast((t) => (
-        <div onClick={() => toast.dismiss(t.id)}>
-          <p className="font-bold">{payload.notification.title}</p>
-          <p>{payload.notification.body}</p>
-        </div>
-      ), { duration: 4000, position: 'top-right' });
-    });
+    const unsubscribeForeground = onForegroundMessage();
 
     // Cleanup foreground listener
     return () => {

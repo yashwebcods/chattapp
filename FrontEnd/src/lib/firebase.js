@@ -1,5 +1,5 @@
 import { initializeApp } from "firebase/app";
-import { getMessaging, getToken } from "firebase/messaging";
+import { getMessaging, getToken, onMessage } from "firebase/messaging";
 
 const firebaseConfig = {
     apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -13,13 +13,37 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 export const messaging = getMessaging(app);
 
+// Register service worker
+export const registerServiceWorker = async () => {
+    if ('serviceWorker' in navigator) {
+        try {
+            const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+            console.log('Service Worker registered successfully:', registration);
+            return registration;
+        } catch (error) {
+            console.error('Service Worker registration failed:', error);
+            return null;
+        }
+    }
+    return null;
+};
+
 export const requestPermission = async () => {
     try {
+        // First register service worker
+        await registerServiceWorker();
+        
         const permission = await Notification.requestPermission();
         if (permission === 'granted') {
+            console.log('Notification permission granted');
             const token = await getToken(messaging, {
-                vapidKey: import.meta.env.VITE_FIREBASE_VAPID_KEY
+                vapidKey: import.meta.env.VITE_FIREBASE_VAPID_KEY,
+                serviceWorkerRegistration: await navigator.serviceWorker.ready
             });
+            
+            if (token) {
+                console.log('FCM Token received:', token);
+            }
             return token;
         } else {
             console.log('Notification permission denied');
@@ -29,4 +53,24 @@ export const requestPermission = async () => {
         console.error('Error requesting notification permission:', error);
         return null;
     }
+};
+
+export const onForegroundMessage = () => {
+    return onMessage(messaging, (payload) => {
+        console.log('Foreground message received:', payload);
+        
+        // Show notification when app is in foreground
+        if (Notification.permission === 'granted') {
+            const notificationTitle = payload.notification?.title || 'New Message';
+            const notificationOptions = {
+                body: payload.notification?.body || 'You have a new message',
+                icon: '/favicon.ico',
+                badge: '/favicon.ico',
+                tag: 'chat-message',
+                requireInteraction: true
+            };
+            
+            new Notification(notificationTitle, notificationOptions);
+        }
+    });
 };

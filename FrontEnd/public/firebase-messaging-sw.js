@@ -1,5 +1,5 @@
-importScripts('https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js');
-importScripts('https://www.gstatic.com/firebasejs/8.10.0/firebase-messaging.js');
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+import { getMessaging, onBackgroundMessage } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging.js";
 
 const firebaseConfig = {
     apiKey: "AIzaSyCGjZ8qe8PAUA2PrPW1x1zN94SihuujZIU",
@@ -10,16 +10,50 @@ const firebaseConfig = {
     appId: "1:72152571656:web:1a506cbda0a8447f7916bd"
 };
 
-firebase.initializeApp(firebaseConfig);
-const messaging = firebase.messaging();
+const app = initializeApp(firebaseConfig);
+const messaging = getMessaging(app);
 
-messaging.onBackgroundMessage((payload) => {
+onBackgroundMessage(messaging, (payload) => {
     console.log('[firebase-messaging-sw.js] Received background message ', payload);
-    const notificationTitle = payload.notification.title;
+    
+    const notificationTitle = payload.notification?.title || 'New Message';
     const notificationOptions = {
-        body: payload.notification.body,
-        icon: '/vite.svg' // Ensure you have an icon in public folder
+        body: payload.notification?.body || 'You have a new message',
+        icon: '/favicon.ico',
+        badge: '/favicon.ico',
+        tag: 'chat-message',
+        requireInteraction: true,
+        data: payload.data
     };
 
     self.registration.showNotification(notificationTitle, notificationOptions);
+});
+
+// Handle notification clicks
+self.addEventListener('notificationclick', (event) => {
+    console.log('Notification clicked:', event);
+    event.notification.close();
+    
+    const data = event.notification.data;
+    if (data) {
+        const url = data.type === 'group' 
+            ? `/group/${data.id}` 
+            : `/`; // Will redirect to home with chat selected
+        
+        event.waitUntil(
+            clients.matchAll({ type: 'window', includeUncontrolled: true })
+                .then((clientList) => {
+                    // Focus existing window if open
+                    for (const client of clientList) {
+                        if (client.url.includes('localhost') || client.url.includes(window.location.origin)) {
+                            return client.focus();
+                        }
+                    }
+                    // Open new window if none exists
+                    if (clients.openWindow) {
+                        return clients.openWindow(url);
+                    }
+                })
+        );
+    }
 });
