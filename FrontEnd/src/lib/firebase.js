@@ -58,19 +58,7 @@ export const requestPermission = async () => {
 export const onForegroundMessage = () => {
     return onMessage(messaging, (payload) => {
         console.log('Foreground message received:', payload);
-        
-        // Show notification when app is in foreground
-        if (Notification.permission === 'granted') {
-            const notificationTitle = payload.notification?.title || 'New Message';
-            const notificationOptions = {
-                body: payload.notification?.body || 'You have a new message',
-                icon: '/favicon.ico',
-                badge: '/favicon.ico',
-                tag: 'chat-message',
-                requireInteraction: true
-            };
-            
-            new Notification(notificationTitle, notificationOptions);
-        }
+        // Don't show notification here - let the service worker handle it
+        // This prevents double notifications
     });
 };
