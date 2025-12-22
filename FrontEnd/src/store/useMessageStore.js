@@ -460,6 +460,13 @@ export const useMessageStore = create(persist((set, get) => ({
             const { selectedGroup, groups, unreadCounts, message } = get();
             const authUser = useAuthStore.getState().authUser;
 
+            // Check if this is my own message and return early
+            const isMyMessage = newMessage.senderId === authUser._id ||
+                newMessage.senderId?._id === authUser._id;
+
+            if (isMyMessage) return;
+
+            if (!selectedGroup) return;
             console.log("📊 Current group message state:", {
                 selectedGroup: selectedGroup?.name,
                 groupsCount: groups.length,
@@ -488,9 +495,6 @@ export const useMessageStore = create(persist((set, get) => ({
             }
 
             // If we sent the message, don't show toast or increment unread count
-            const isMyMessage = newMessage.senderId === authUser._id ||
-                newMessage.senderId?._id === authUser._id;
-
             if (!isMyMessage && !isCurrentGroup) {
                 // Get group name - format it like in GroupsListPage
                 let groupName = 'a group';
