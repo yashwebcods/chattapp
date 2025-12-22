@@ -461,12 +461,11 @@ export const useMessageStore = create(persist((set, get) => ({
             const authUser = useAuthStore.getState().authUser;
 
             // Check if this is my own message and return early
-            const isMyMessage = newMessage.senderId === authUser._id ||
-                newMessage.senderId?._id === authUser._id;
+            const senderId = newMessage.senderId?._id || newMessage.senderId;
+            const authUserId = authUser?._id;
+            const isMyMessage = senderId && authUserId && senderId.toString() === authUserId.toString();
 
             if (isMyMessage) return;
-
-            if (!selectedGroup) return;
             console.log("📊 Current group message state:", {
                 selectedGroup: selectedGroup?.name,
                 groupsCount: groups.length,
