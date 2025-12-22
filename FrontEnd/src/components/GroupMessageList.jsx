@@ -1,7 +1,19 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import GroupMessageBubble from './GroupMessageBubble';
 
 const GroupMessageList = ({ messages, onEdit, onDelete, onShowHistory, messageEndRef, topSentinelRef, scrollContainerRef, hasMoreMessages, isLoadingMore }) => {
+    const prevMessagesLengthRef = useRef(messages.length);
+
+    useEffect(() => {
+        // Auto-scroll to bottom when new messages are added (but not during initial load)
+        if (messageEndRef.current && messages.length > prevMessagesLengthRef.current) {
+            setTimeout(() => {
+                messageEndRef.current.scrollIntoView({ behavior: 'smooth' });
+            }, 100);
+        }
+        prevMessagesLengthRef.current = messages.length;
+    }, [messages, messageEndRef]);
+
     return (
         <div className='flex-1 overflow-y-auto p-2 sm:p-4 space-y-3 sm:space-y-4' ref={scrollContainerRef}>
             {/* Sentinel for infinite scroll */}
@@ -23,7 +35,7 @@ const GroupMessageList = ({ messages, onEdit, onDelete, onShowHistory, messageEn
                         onEdit={onEdit}
                         onDelete={onDelete}
                         onShowHistory={onShowHistory}
-                        messageEndRef={messageEndRef}
+                        messageEndRef={msg === messages[messages.length - 1] ? messageEndRef : null}
                     />
                 ))
             )}

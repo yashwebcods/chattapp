@@ -41,6 +41,7 @@ function Chat() {
   const messageEndRef = useRef(null);
   const topSentinelRef = useRef(null);
   const scrollContainerRef = useRef(null);
+  const prevMessagesLengthRef = useRef(message.length);
   const [isInitialLoad, setIsInitialLoad] = React.useState(true);
 
   useEffect(() => {
@@ -61,12 +62,18 @@ function Chat() {
   }, [selectedUser?._id, selectedGroup?._id]);
 
   useEffect(() => {
-    if (messageEndRef.current && message && !isSelectionMode && isInitialLoad) {
-      messageEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    if (messageEndRef.current && message && !isSelectionMode) {
+      // Always scroll to bottom when messages change, but be smarter about it
+      const shouldScroll = isInitialLoad || message.length > prevMessagesLengthRef.current;
+      if (shouldScroll) {
+        setTimeout(() => {
+          messageEndRef.current.scrollIntoView({ behavior: 'smooth' });
+        }, 100);
+      }
     }
+    prevMessagesLengthRef.current = message.length;
   }, [message, isSelectionMode, isInitialLoad]);
 
-  // Handle intersection observer for infinite scrolling
   useEffect(() => {
     if (!scrollContainerRef.current) return;
 

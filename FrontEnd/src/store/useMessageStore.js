@@ -95,10 +95,13 @@ export const useMessageStore = create(persist((set, get) => ({
     },
 
     clearUnreadCount: (targetId) => {
-        const { unreadCounts } = get();
-        const newCounts = { ...unreadCounts };
-        delete newCounts[targetId];
-        set({ unreadCounts: newCounts });
+        const currentCounts = get().unreadCounts || {};
+        const idString = targetId?.toString();
+        if (idString && currentCounts[idString] > 0) {
+            const newCounts = { ...currentCounts };
+            delete newCounts[idString];
+            set({ unreadCounts: newCounts });
+        }
     },
 
     deleteUser: async (userId) => {
@@ -310,7 +313,7 @@ export const useMessageStore = create(persist((set, get) => ({
 
         if (!socket.connected) {
             console.log("Socket not connected, waiting for connection...");
-            socket.on('connect', () => {
+            socket.once('connect', () => {
                 console.log("Socket connected, subscribing to messages...");
                 get().setupMessageListener(socket);
             });
@@ -562,19 +565,6 @@ export const useMessageStore = create(persist((set, get) => ({
                 selectedGroup: updatedSelectedGroup
             });
         });
-    },
-
-    clearUnreadCount: (id) => {
-        const currentCounts = get().unreadCounts || {};
-        const idString = id?.toString();
-        if (idString) {
-            set({
-                unreadCounts: {
-                    ...currentCounts,
-                    [idString]: 0
-                }
-            });
-        }
     },
 
     unsubscribeFromGroupMessages: () => {
