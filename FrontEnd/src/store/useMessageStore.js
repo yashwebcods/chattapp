@@ -516,7 +516,7 @@ export const useMessageStore = create(persist((set, get) => ({
 
                 // Show notification with group name (2 second duration)
                 console.log("🔔 Showing group notification:", groupName);
-                toast.success(`New message from ${groupName}`, { duration: 2000 });
+                // toast.success(`New message from ${groupName}`, { duration: 2000 });
                 console.log(`New message from ${groupName}`);
 
                 // Increment unread count for this group
