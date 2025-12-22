@@ -10,10 +10,11 @@ const firebaseConfig = {
     appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
 
+// Initialize Firebase
 const app = initializeApp(firebaseConfig);
 export const messaging = getMessaging(app);
 
-// Register service worker
+// Register the service worker
 export const registerServiceWorker = async () => {
     if ('serviceWorker' in navigator) {
         try {
@@ -28,21 +29,23 @@ export const registerServiceWorker = async () => {
     return null;
 };
 
+// Ask for push permission & get token
 export const requestPermission = async () => {
     try {
-        // First register service worker
-        await registerServiceWorker();
-        
+        const registration = await registerServiceWorker();
+
         const permission = await Notification.requestPermission();
         if (permission === 'granted') {
             console.log('Notification permission granted');
+
             const token = await getToken(messaging, {
                 vapidKey: import.meta.env.VITE_FIREBASE_VAPID_KEY,
-                serviceWorkerRegistration: await navigator.serviceWorker.ready
+                serviceWorkerRegistration: registration
             });
-            
+
             if (token) {
-                console.log('FCM Token received:', token);
+                console.log('FCM Token:', token);
+                // Save token to your backend
             }
             return token;
         } else {
@@ -50,15 +53,15 @@ export const requestPermission = async () => {
             return null;
         }
     } catch (error) {
-        console.error('Error requesting notification permission:', error);
+        console.error('Error requesting permission', error);
         return null;
     }
 };
 
+// Handle messages when app is in foreground
 export const onForegroundMessage = () => {
     return onMessage(messaging, (payload) => {
         console.log('Foreground message received:', payload);
-        // Don't show notification here - let the service worker handle it
-        // This prevents double notifications
+        // You can update UI here (like a toast)
     });
 };
