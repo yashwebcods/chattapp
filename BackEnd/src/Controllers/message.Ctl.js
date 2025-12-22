@@ -199,8 +199,11 @@ export const sendMessage = async (req, res) => {
                     return res.status(400).json({ error: 'Invalid file format' });
                 }
 
-                const fileType = matches[1];
+                const mimeType = matches[1];
                 const buffer = Buffer.from(matches[2], 'base64');
+
+                console.log(' - MIME type:', mimeType);
+                console.log(' - Buffer size:', buffer.length, 'bytes');
 
                 // Generate unique filename
                 const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
@@ -208,18 +211,27 @@ export const sendMessage = async (req, res) => {
                 const sanitizedFileName = (fileName || 'file').replace(/[^a-zA-Z0-9.-]/g, '_');
                 const path = `${uniqueSuffix}_${sanitizedFileName}`;
 
+                console.log(' - Upload path:', path);
+                console.log(' - Uploading to Supabase bucket:', bucketName);
+
                 const { data, error } = await supabase
                     .storage
                     .from(bucketName)
                     .upload(path, buffer, {
-                        contentType: fileType,
+                        contentType: mimeType,
                         upsert: false
                     });
 
                 if (error) {
-                    console.error('Supabase upload error:', error);
-                    throw error;
+                    console.error('❌ Supabase upload error:', error);
+                    console.error('   Error details:', JSON.stringify(error, null, 2));
+                    return res.status(400).json({
+                        error: 'Failed to upload file to storage',
+                        details: error.message
+                    });
                 }
+
+                console.log('✅ File uploaded to Supabase:', data);
 
                 // Get Public URL
                 const { data: publicURLData } = supabase
@@ -230,11 +242,13 @@ export const sendMessage = async (req, res) => {
                 fileUrl = publicURLData.publicUrl;
                 messageType = 'file';
                 fileResourceType = 'supabase'; // Mark as stored in Supabase
-                console.log('✅ File uploaded to Supabase:', { url: fileUrl });
+                console.log('✅ Public URL generated:', fileUrl);
             } catch (uploadError) {
-                console.error('File upload error:', uploadError);
+                console.error('❌ File upload error:', uploadError);
+                console.error('   Stack trace:', uploadError.stack);
                 return res.status(400).json({
-                    error: 'Failed to upload file to storage.'
+                    error: 'Failed to upload file to storage',
+                    details: uploadError.message
                 });
             }
         }
@@ -259,7 +273,18 @@ export const sendMessage = async (req, res) => {
             cloudinaryResourceType: imageResourceType || fileResourceType || null
         });
 
-        await newMessage.save();
+        try {
+            await newMessage.save();
+            console.log('✅ Message saved to database');
+        } catch (saveError) {
+            console.error('❌ Error saving message to database:', saveError);
+            console.error('   Validation errors:', saveError.errors);
+            return res.status(500).json({
+                error: 'Failed to save message',
+                details: saveError.message
+            });
+        }
+
         await newMessage.populate("senderId", "fullName image");
 
         // Populate groupId with seller info for proper group name formatting
