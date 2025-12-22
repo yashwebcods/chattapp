@@ -321,13 +321,12 @@ export const sendMessage = async (req, res) => {
                     io.emit("newGroupMessage", newMessage);
                 }
 
-                /* PUSH NOTIFICATIONS */
+                /* PUSH NOTIFICATIONS - Optimized for speed */
                 let notificationTitle = req.user.fullName;
                 if (groupId) {
-                    const group = await Group.findById(groupId);
-                    if (group) {
-                        notificationTitle = `New message from ${group.name}`;
-                    }
+                    notificationTitle = req.body.groupName 
+                        ? `New message from ${req.body.groupName}`
+                        : `New message from group`;
                 }
 
                 const notificationPayload = {

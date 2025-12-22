@@ -355,8 +355,9 @@ export const useMessageStore = create(persist((set, get) => ({
                 set({ message: [...message, newMessage] });
                 get().markAsSeen(selectedUser._id);
             } else {
-                // Not viewing this chat - increment unread count
-                // (Firebase push notification will handle the notification)
+                // Not viewing this chat - show toast notification and increment unread count
+                const senderName = newMessage.senderId?.fullName || 'Someone';
+                toast.success(`New message from ${senderName}`, { duration: 2000 });
 
                 // Increment unread count for this user
                 let senderId = newMessage.senderId?._id || newMessage.senderId;
@@ -521,7 +522,7 @@ export const useMessageStore = create(persist((set, get) => ({
 
                 // Show notification with group name (2 second duration)
                 console.log("🔔 Showing group notification:", groupName);
-                // toast.success(`New message from ${groupName}`, { duration: 2000 });
+                toast.success(`New message from ${groupName}`, { duration: 2000 });
                 console.log(`New message from ${groupName}`);
 
                 // Increment unread count for this group
