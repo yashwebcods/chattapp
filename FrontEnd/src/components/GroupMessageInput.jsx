@@ -75,23 +75,33 @@ const GroupMessageInput = ({ groupId }) => {
         e.preventDefault();
         if (!text.trim() && !imagePreview && !filePreview) return;
 
+        // Store current values to restore if needed
+        const currentText = text;
+        const currentImagePreview = imagePreview;
+        const currentFilePreview = filePreview;
+        const currentFileName = fileName;
+
         try {
-            await sendMessages({
+            const result = await sendMessages({
                 text: text.trim(),
                 image: imagePreview,
                 file: filePreview,
                 fileName
             });
 
-            setText('');
-            setImagePreview(null);
-            setFilePreview(null);
-            setFileName('');
-            if (fileInputRef.current) fileInputRef.current.value = '';
-            if (documentFileInputRef.current) documentFileInputRef.current.value = '';
+            // Only clear previews if message was sent successfully (result is not null)
+            if (result !== null) {
+                setText('');
+                setImagePreview(null);
+                setFilePreview(null);
+                setFileName('');
+                if (fileInputRef.current) fileInputRef.current.value = '';
+                if (documentFileInputRef.current) documentFileInputRef.current.value = '';
+            }
         } catch (error) {
             console.error('Failed to send message:', error);
             toast.error('Failed to send message');
+            // Values are preserved since we didn't clear them
         }
     };
 

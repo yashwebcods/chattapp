@@ -130,8 +130,8 @@ const GroupMessageBubble = ({ msg, onEdit, onDelete, onShowHistory, messageEndRe
                             <div className="flex items-center gap-1 opacity-60" title={`Seen by: ${msg.seenBy.map(u => u.fullName).join(', ')}`}>
                                 <span className="text-[9px] truncate max-w-[80px]">
                                     {msg.seenBy.length === 1
-                                        ? `Seen by ${msg.seenBy[0].fullName}`
-                                        : `Seen by ${msg.seenBy[0].fullName} and ${msg.seenBy.length - 1} more`}
+                                        ? `${msg.seenBy[0].fullName}`
+                                        : `${msg.seenBy[0].fullName} +${msg.seenBy.length - 1}`}
                                 </span>
                                 <CheckCheck className="size-2.5 text-primary" />
                             </div>
