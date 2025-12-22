@@ -50,7 +50,7 @@ function Chat() {
       subcribeToMessages();
     } else if (selectedGroup?._id) {
       getGroupMessages(selectedGroup._id);
-      subscribeToGroupMessages();
+      // subscribeToGroupMessages is already called in App.jsx
     }
   }, [selectedUser?._id, selectedGroup?._id]);
 
