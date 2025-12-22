@@ -76,7 +76,12 @@ export const useMessageStore = create(persist((set, get) => ({
             if (isToSelected) {
                 set({
                     message: message.map(msg => {
-                        const isFromTarget = msg.senderId === targetId || msg.senderId?._id === targetId || msg.groupId === targetId;
+                        const isGroupChat = !!selectedGroup && selectedGroup?._id === targetId;
+                        const isOwnMessage = msg.senderId === authUser._id || msg.senderId?._id === authUser._id;
+
+                        const isFromTarget = isGroupChat
+                            ? (msg.groupId === targetId && !isOwnMessage)
+                            : (msg.senderId === targetId || msg.senderId?._id === targetId);
                         const isNotSeenByMe = !msg.seenBy?.some(u =>
                             (u === authUser._id) || (u._id === authUser._id)
                         );

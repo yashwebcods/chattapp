@@ -11,6 +11,8 @@ const GroupMessageBubble = ({ msg, onEdit, onDelete, onShowHistory, messageEndRe
 
     const isOwnMessage = (msg.senderId === authUser._id) || (msg.senderId?._id === authUser._id);
     const members = selectedGroup?.members || [];
+    const canEdit = isOwnMessage && !msg.isDeleted && !msg.image && !msg.fileUrl;
+    const seenByOthers = (msg.seenBy || []).filter(u => u?._id !== authUser._id);
 
     const handleCopy = () => {
         if (!msg.text) return;
@@ -85,9 +87,11 @@ const GroupMessageBubble = ({ msg, onEdit, onDelete, onShowHistory, messageEndRe
                     )}
                     {isOwnMessage && !msg.isDeleted && (
                         <>
-                            <button onClick={() => onEdit(msg)} className="btn btn-ghost btn-xs text-info p-0 size-5 min-h-0" title="Edit">
-                                <Pencil className="size-3" />
-                            </button>
+                            {canEdit && (
+                                <button onClick={() => onEdit(msg)} className="btn btn-ghost btn-xs text-info p-0 size-5 min-h-0" title="Edit">
+                                    <Pencil className="size-3" />
+                                </button>
+                            )}
                             <button onClick={() => onDelete(msg._id)} className="btn btn-ghost btn-xs text-error p-0 size-5 min-h-0" title="Delete">
                                 <Trash2 className="size-3" />
                             </button>
@@ -143,12 +147,12 @@ const GroupMessageBubble = ({ msg, onEdit, onDelete, onShowHistory, messageEndRe
 
                     <div className="flex items-center gap-1.5 ml-auto">
                         <time className='text-[10px] opacity-50 leading-none'>{DateFormated(msg.createdAt)}</time>
-                        {isOwnMessage && !msg.isDeleted && msg.seenBy?.length > 0 && (
-                            <div className="flex items-center gap-1 opacity-60" title={`Seen by: ${msg.seenBy.map(u => u.fullName).join(', ')}`}>
+                        {isOwnMessage && !msg.isDeleted && seenByOthers.length > 0 && (
+                            <div className="flex items-center gap-1 opacity-60" title={`Seen by: ${seenByOthers.map(u => u.fullName).join(', ')}`}>
                                 <span className="text-[9px] truncate max-w-[80px]">
-                                    {msg.seenBy.length === 1
-                                        ? `${msg.seenBy[0].fullName}`
-                                        : `${msg.seenBy[0].fullName} +${msg.seenBy.length - 1}`}
+                                    {seenByOthers.length === 1
+                                        ? `${seenByOthers[0].fullName}`
+                                        : `${seenByOthers[0].fullName} +${seenByOthers.length - 1}`}
                                 </span>
                                 <CheckCheck className="size-2.5 text-primary" />
                             </div>

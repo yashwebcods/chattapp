@@ -77,7 +77,7 @@ export const markMessagesAsSeen = async (req, res) => {
         if (isGroup) {
             // Group Chat: Mark all messages in this group as seen by current user
             await Message.updateMany(
-                { groupId: targetId, seenBy: { $ne: readerId } },
+                { groupId: targetId, senderId: { $ne: readerId }, seenBy: { $ne: readerId } },
                 { $addToSet: { seenBy: readerId } }
             );
 

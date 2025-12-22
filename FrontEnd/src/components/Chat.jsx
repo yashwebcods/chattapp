@@ -249,16 +249,18 @@ function Chat() {
                                 )}
                                 {isOwnMessage && (
                                   <>
-                                    <button
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        setEditingMessage(v);
-                                      }}
-                                      className='btn btn-ghost btn-xs text-info p-0 size-5 min-h-0'
-                                      title='Edit message'
-                                    >
-                                      <Pencil className='size-3' />
-                                    </button>
+                                    {!v.isDeleted && !v.image && !v.fileUrl && (
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setEditingMessage(v);
+                                        }}
+                                        className='btn btn-ghost btn-xs text-info p-0 size-5 min-h-0'
+                                        title='Edit message'
+                                      >
+                                        <Pencil className='size-3' />
+                                      </button>
+                                    )}
                                     <button
                                       onClick={(e) => {
                                         e.stopPropagation();
