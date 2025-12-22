@@ -18,6 +18,7 @@ export const useMessageStore = create(persist((set, get) => ({
     unreadCounts: {}, // { userId: count, groupId: count }
     sellerIndex: null,
     editingMessage: null, // The message being edited
+    isSending: false, // Loading state for message sending
     hasMoreMessages: true,
     isLoadingMore: false,
     setEditingMessage: (msg) => set({ editingMessage: msg }),
@@ -177,6 +178,8 @@ export const useMessageStore = create(persist((set, get) => ({
             authUser: authUser?.fullName
         });
 
+        set({ isSending: true });
+
         try {
             const endpoint = selectedGroup
                 ? `/message/send/undefined`
@@ -239,6 +242,8 @@ export const useMessageStore = create(persist((set, get) => ({
             console.error('Send message error:', error);
             toast.error(error.response?.data?.message || "Failed to send message");
             return null; // Return null on error so input can still clear
+        } finally {
+            set({ isSending: false });
         }
     },
 

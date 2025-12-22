@@ -18,6 +18,7 @@ export const MessageInput = () => {
     sendMessages,
     selectedUser,
     selectedGroup,
+    isSending,
     sendTyping,
     sendStopTyping,
     sendGroupTyping,
@@ -258,9 +259,9 @@ export const MessageInput = () => {
 
           <button type='submit'
             className={`btn btn-circle btn-sm sm:btn-md ${editingMessage ? 'btn-info' : 'btn-primary'}`}
-            disabled={!text.trim() && !imagePreview && !filePreview}
+            disabled={isSending || (!text.trim() && !imagePreview && !filePreview)}
           >
-            <Send className="size-5" />
+            {isSending ? <span className='loading loading-spinner loading-xs'></span> : <Send className="size-5" />}
           </button>
         </div>
       </form>

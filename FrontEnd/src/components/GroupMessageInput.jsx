@@ -4,7 +4,7 @@ import { Send, Image as ImageIcon, Paperclip, X, File, AtSign } from 'lucide-rea
 import toast from 'react-hot-toast';
 
 const GroupMessageInput = ({ groupId }) => {
-    const { selectedGroup, sendMessages } = useMessageStore();
+    const { selectedGroup, sendMessages, isSending } = useMessageStore();
     const [text, setText] = useState('');
     const [imagePreview, setImagePreview] = useState(null);
     const [filePreview, setFilePreview] = useState(null);
@@ -160,8 +160,8 @@ const GroupMessageInput = ({ groupId }) => {
                 <button type='button' onClick={() => fileInputRef.current?.click()} className='btn btn-circle btn-ghost' title='Attach image'>
                     <ImageIcon className='size-5' />
                 </button>
-                <button type='submit' className='btn btn-primary'>
-                    <Send className='size-5' />
+                <button type='submit' className='btn btn-primary' disabled={isSending || (!text.trim() && !imagePreview && !filePreview)}>
+                    {isSending ? <span className='loading loading-spinner loading-xs'></span> : <Send className='size-5' />}
                 </button>
             </form>
         </div>
