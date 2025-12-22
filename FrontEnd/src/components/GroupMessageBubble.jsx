@@ -9,7 +9,7 @@ const GroupMessageBubble = ({ msg, onEdit, onDelete, onShowHistory, messageEndRe
     const { authUser } = useAuthStore();
     const { setForwardingMessage, selectedGroup } = useMessageStore();
 
-    const isOwnMessage = msg.senderId?._id === authUser._id;
+    const isOwnMessage = (msg.senderId === authUser._id) || (msg.senderId?._id === authUser._id);
     const members = selectedGroup?.members || [];
 
     const handleCopy = () => {

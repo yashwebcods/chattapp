@@ -164,26 +164,41 @@ export const sendMessage = async (req, res) => {
         let imageResourceType = null;
         let fileResourceType = null;
 
+        const isRemoteUrl = (value) => typeof value === 'string' && /^https?:\/\//i.test(value);
+
         // Upload image if provided
         if (image) {
-            try {
-                console.log('🖼️ Uploading image to Cloudinary...');
-                const uploadRes = await cloudnairy.uploader.upload(image, {
-                    resource_type: 'auto',
-                    folder: 'chat_images'
-                });
-                imageUrl = uploadRes.secure_url;
+            // If client sends an already-hosted URL (e.g., forwarding), keep it as-is
+            if (isRemoteUrl(image)) {
+                imageUrl = image;
                 messageType = 'image';
-                imageResourceType = uploadRes.resource_type;
-                console.log('✅ Image uploaded:', { url: imageUrl, type: imageResourceType });
-            } catch (err) {
-                console.error('Image upload error:', err);
-                return res.status(400).json({ error: 'Failed to upload image' });
+                imageResourceType = 'external';
+            } else {
+                try {
+                    console.log('🖼️ Uploading image to Cloudinary...');
+                    const uploadRes = await cloudnairy.uploader.upload(image, {
+                        resource_type: 'auto',
+                        folder: 'chat_images'
+                    });
+                    imageUrl = uploadRes.secure_url;
+                    messageType = 'image';
+                    imageResourceType = uploadRes.resource_type;
+                    console.log('✅ Image uploaded:', { url: imageUrl, type: imageResourceType });
+                } catch (err) {
+                    console.error('Image upload error:', err);
+                    return res.status(400).json({ error: 'Failed to upload image' });
+                }
             }
         }
 
         // Upload file if provided (PDFs, documents, etc.)
         if (file) {
+            // If client sends an already-hosted URL (e.g., forwarding), keep it as-is
+            if (isRemoteUrl(file)) {
+                fileUrl = file;
+                messageType = 'file';
+                fileResourceType = 'external';
+            } else {
             try {
                 console.log('📄 Processing file upload...');
                 console.log(' - File type:', typeof file);
@@ -250,6 +265,7 @@ export const sendMessage = async (req, res) => {
                     error: 'Failed to upload file to storage',
                     details: uploadError.message
                 });
+            }
             }
         }
 
