@@ -4,6 +4,28 @@ import GroupMessageBubble from './GroupMessageBubble';
 const GroupMessageList = ({ messages, onEdit, onDelete, onShowHistory, messageEndRef, topSentinelRef, scrollContainerRef, hasMoreMessages, isLoadingMore }) => {
     const prevMessagesLengthRef = useRef(messages.length);
 
+    const getDayKey = (value) => {
+        if (!value) return '';
+        const d = new Date(value);
+        if (Number.isNaN(d.getTime())) return '';
+        return d.toDateString();
+    };
+
+    const getDayLabel = (value) => {
+        if (!value) return '';
+        const d = new Date(value);
+        if (Number.isNaN(d.getTime())) return '';
+
+        const today = new Date();
+        const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+        const startOfThatDay = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+        const diffDays = Math.round((startOfToday - startOfThatDay) / (1000 * 60 * 60 * 24));
+
+        if (diffDays === 0) return 'Today';
+        if (diffDays === 1) return 'Yesterday';
+        return d.toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' });
+    };
+
     useEffect(() => {
         // Auto-scroll to bottom when new messages are added (but not during initial load)
         if (messageEndRef.current && typeof messageEndRef.current.scrollIntoView === 'function' && messages.length > prevMessagesLengthRef.current) {
@@ -30,16 +52,30 @@ const GroupMessageList = ({ messages, onEdit, onDelete, onShowHistory, messageEn
                     <p className='text-base-content/60'>No messages yet. Start the conversation!</p>
                 </div>
             ) : (
-                messages.map((msg) => (
-                    <GroupMessageBubble
-                        key={msg._id}
-                        msg={msg}
-                        onEdit={onEdit}
-                        onDelete={onDelete}
-                        onShowHistory={onShowHistory}
-                        messageEndRef={msg === messages[messages.length - 1] ? messageEndRef : null}
-                    />
-                ))
+                messages.map((msg, idx) => {
+                    const currentDayKey = getDayKey(msg.createdAt);
+                    const prevDayKey = idx > 0 ? getDayKey(messages[idx - 1]?.createdAt) : '';
+                    const showDayDivider = !!currentDayKey && currentDayKey !== prevDayKey;
+
+                    return (
+                        <React.Fragment key={msg._id}>
+                            {showDayDivider && (
+                                <div className="flex justify-center py-2">
+                                    <div className="px-3 py-1 rounded-full bg-base-200 text-[11px] font-semibold opacity-70">
+                                        {getDayLabel(msg.createdAt)}
+                                    </div>
+                                </div>
+                            )}
+                            <GroupMessageBubble
+                                msg={msg}
+                                onEdit={onEdit}
+                                onDelete={onDelete}
+                                onShowHistory={onShowHistory}
+                                messageEndRef={msg === messages[messages.length - 1] ? messageEndRef : null}
+                            />
+                        </React.Fragment>
+                    );
+                })
             )}
         </div>
     );
