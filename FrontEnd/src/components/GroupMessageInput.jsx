@@ -3,8 +3,8 @@ import { useMessageStore } from '../store/useMessageStore';
 import { Send, Image as ImageIcon, Paperclip, X, File, AtSign } from 'lucide-react';
 import toast from 'react-hot-toast';
 
-const GroupMessageInput = ({ groupId, onMessageSent }) => {
-    const { selectedGroup, forwardMessage } = useMessageStore();
+const GroupMessageInput = ({ groupId }) => {
+    const { selectedGroup, sendMessages } = useMessageStore();
     const [text, setText] = useState('');
     const [imagePreview, setImagePreview] = useState(null);
     const [filePreview, setFilePreview] = useState(null);
@@ -58,8 +58,8 @@ const GroupMessageInput = ({ groupId, onMessageSent }) => {
         const file = e.target.files[0];
         if (!file) return;
 
-        if (file.size > 10 * 1024 * 1024) {
-            toast.error('File size must be less than 10MB');
+        if (file.size > 20 * 1024 * 1024) {
+            toast.error('File size must be less than 20MB');
             return;
         }
 
@@ -75,14 +75,24 @@ const GroupMessageInput = ({ groupId, onMessageSent }) => {
         e.preventDefault();
         if (!text.trim() && !imagePreview && !filePreview) return;
 
-        await onMessageSent({ text, image: imagePreview, file: filePreview, fileName });
+        try {
+            await sendMessages({
+                text: text.trim(),
+                image: imagePreview,
+                file: filePreview,
+                fileName
+            });
 
-        setText('');
-        setImagePreview(null);
-        setFilePreview(null);
-        setFileName('');
-        if (fileInputRef.current) fileInputRef.current.value = '';
-        if (documentFileInputRef.current) documentFileInputRef.current.value = '';
+            setText('');
+            setImagePreview(null);
+            setFilePreview(null);
+            setFileName('');
+            if (fileInputRef.current) fileInputRef.current.value = '';
+            if (documentFileInputRef.current) documentFileInputRef.current.value = '';
+        } catch (error) {
+            console.error('Failed to send message:', error);
+            toast.error('Failed to send message');
+        }
     };
 
     return (
