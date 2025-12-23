@@ -363,6 +363,10 @@ export const sendMessage = async (req, res) => {
 
                 const notificationBody = text || (image ? 'Sent an image' : 'Sent a file');
 
+                const appBaseUrl = process.env.APP_URL || process.env.FRONTEND_URL || process.env.BACKEND_URL || "";
+                const clickPath = groupId ? `/group/${groupId}` : `/`;
+                const clickUrl = appBaseUrl ? `${appBaseUrl.replace(/\/$/, "")}${clickPath}` : undefined;
+
                 const notificationPayload = {
                     data: {
                         title: notificationTitle,
@@ -371,6 +375,20 @@ export const sendMessage = async (req, res) => {
                         senderId: senderId.toString(),
                         type: groupId ? 'group' : 'chat',
                         id: groupId ? groupId.toString() : senderId.toString()
+                    },
+                    notification: {
+                        title: notificationTitle,
+                        body: notificationBody
+                    },
+                    webpush: {
+                        notification: {
+                            title: notificationTitle,
+                            body: notificationBody,
+                            icon: '/favicon.ico',
+                            badge: '/favicon.ico',
+                            data: { type: groupId ? 'group' : 'chat', id: groupId ? groupId.toString() : senderId.toString() }
+                        },
+                        fcmOptions: clickUrl ? { link: clickUrl } : undefined
                     }
                 };
                 
