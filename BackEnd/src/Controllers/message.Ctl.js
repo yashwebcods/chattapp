@@ -712,8 +712,9 @@ export const clearChat = async (req, res) => {
         debug("✅ System message emitted to receiver:", userToChatId);
 
         // Also emit a clearChat event to both users for UI update
-        io.to(userToChatId).emit("chatCleared", { clearedBy: myId.toString(), userId: userToChatId });
-        io.to(myId.toString()).emit("chatCleared", { clearedBy: myId.toString(), userId: userToChatId });
+        // chatWithId should represent the *other* participant from the receiver's perspective
+        io.to(userToChatId).emit("chatCleared", { clearedBy: myId.toString(), chatWithId: myId.toString() });
+        io.to(myId.toString()).emit("chatCleared", { clearedBy: myId.toString(), chatWithId: userToChatId.toString() });
         debug("✅ clearChat event emitted to both users");
 
         res.status(200).json({ message: "Chat cleared successfully" });
@@ -805,6 +806,9 @@ export const clearGroupChat = async (req, res) => {
 
         // Emit system message to all group members
         io.emit("newGroupMessage", systemMessage);
+
+        // Emit clear event so clients viewing this group can instantly clear their UI
+        io.emit("groupChatCleared", { groupId: groupId.toString(), clearedBy: myId.toString() });
 
         res.status(200).json({ message: "Group chat cleared successfully" });
     } catch (error) {

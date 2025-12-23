@@ -464,6 +464,7 @@ export const useMessageStore = create(persist((set, get) => ({
             socket.off("chatCleared");
             socket.off("messagesDeleted");
             socket.off("messageEdited");
+            socket.off("groupChatCleared");
             debug("Unsubscribed from message events");
         }
     },
@@ -473,14 +474,47 @@ export const useMessageStore = create(persist((set, get) => ({
         const socket = useAuthStore.getState().socket;
         if (!socket) return;
 
-        socket.on("chatCleared", ({ clearedBy, userId }) => {
-            debug("🗑️ Chat cleared event received:", { clearedBy, userId });
-            const authUser = useAuthStore.getState().authUser;
+        socket.off("chatCleared");
+        socket.on("chatCleared", ({ clearedBy, chatWithId }) => {
+            debug("🗑️ Chat cleared event received:", { clearedBy, chatWithId });
             const { selectedUser } = get();
 
             // If we're viewing this chat, clear the messages
-            if (selectedUser && selectedUser._id === userId) {
-                debug("✅ Clearing chat UI for:", userId);
+            if (selectedUser && selectedUser._id === chatWithId) {
+                debug("✅ Clearing chat UI for:", chatWithId);
+                set({ message: [] });
+            }
+        });
+
+        // Real-time delete (soft-delete) update
+        socket.off("messagesDeleted");
+        socket.on("messagesDeleted", ({ messageIds, deletedBy }) => {
+            debug("🗑️ messagesDeleted event received:", { deletedBy, count: messageIds?.length });
+            if (!Array.isArray(messageIds) || messageIds.length === 0) return;
+
+            const { message } = get();
+            set({
+                message: message.map(msg => {
+                    if (messageIds.includes(msg._id)) {
+                        return {
+                            ...msg,
+                            isDeleted: true,
+                            text: 'This message was deleted',
+                            image: null,
+                            fileUrl: null
+                        };
+                    }
+                    return msg;
+                })
+            });
+        });
+
+        // Real-time group clear
+        socket.off("groupChatCleared");
+        socket.on("groupChatCleared", ({ groupId, clearedBy }) => {
+            debug("🗑️ groupChatCleared event received:", { groupId, clearedBy });
+            const { selectedGroup } = get();
+            if (selectedGroup && selectedGroup._id === groupId) {
                 set({ message: [] });
             }
         });

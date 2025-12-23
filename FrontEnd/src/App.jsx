@@ -41,7 +41,7 @@ function App() {
     });
 
     // Handle Foreground Messages
-    const unsubscribeForeground = onForegroundMessage();
+    const unsubscribeForeground = onForegroundMessage(authUser?._id);
 
     // Cleanup foreground listener
     return () => {

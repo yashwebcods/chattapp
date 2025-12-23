@@ -66,12 +66,17 @@ export const requestPermission = async () => {
 };
 
 // Handle messages when app is in foreground
-export const onForegroundMessage = () => {
+export const onForegroundMessage = (currentUserId) => {
     return onMessage(messaging, (payload) => {
         debug('Foreground message received:', payload);
 
         const data = payload?.data || {};
         const notification = payload?.notification || {};
+
+        // If this notification was triggered by my own message, ignore it
+        if (currentUserId && data?.senderId && data.senderId.toString() === currentUserId.toString()) {
+            return;
+        }
 
         const title = notification.title || data.title || 'New Message';
         const body = notification.body || data.body || '';
