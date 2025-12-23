@@ -5,10 +5,8 @@ import { MessageInput } from './MessageInput';
 import ChatSkeleton from './Skeletons/ChatSkeleton';
 import { useAuthStore } from '../store/useAuthStore';
 import { DateFormated, getDownloadUrl } from '../lib/utills';
-import { Trash2, Pencil, Clock, X, Copy, Share2, Download, Paperclip, CheckCheck, Loader2 as Loader } from 'lucide-react';
-import toast from 'react-hot-toast';
+import { Trash2, Pencil, Clock, Copy, Share2, Download, Paperclip, CheckCheck, Loader2 as Loader } from 'lucide-react';
 import ForwardModal from './ForwardModal';
-
 import GroupModals from './GroupModals';
 
 function Chat() {
@@ -36,7 +34,7 @@ function Chat() {
   } = useMessageStore();
 
   const { authUser } = useAuthStore();
-  const [showHistoryMsg, setShowHistoryMsg] = React.useState(null);
+  const [expandedEditsMessageId, setExpandedEditsMessageId] = React.useState(null);
 
   const getDayKey = (value) => {
     if (!value) return '';
@@ -145,7 +143,6 @@ function Chat() {
   const handleCopyMessage = (text) => {
     if (!text) return;
     navigator.clipboard.writeText(text);
-    toast.success('Message copied to clipboard');
   };
 
   const handleDeleteSelected = async () => {
@@ -365,16 +362,25 @@ function Chat() {
                                       </div>
                                     )}
                                     {v.text && <p className="mb-1">{v.text}</p>}
+                                    {expandedEditsMessageId === v._id && (v.editHistory || []).length > 0 && (
+                                      <div className="mt-2 space-y-2">
+                                        {[...(v.editHistory || [])].slice().reverse().map((history, hIdx) => (
+                                          <div key={hIdx} className="p-2 bg-base-200/50 rounded-lg text-xs opacity-80">
+                                            {history.text}
+                                          </div>
+                                        ))}
+                                      </div>
+                                    )}
                                     <div className="flex items-center gap-1 self-end mt-auto">
                                       {v.isEdited && (
                                         <button
                                           onClick={(e) => {
                                             e.stopPropagation();
-                                            setShowHistoryMsg(v);
+                                            setExpandedEditsMessageId((current) => (current === v._id ? null : v._id));
                                           }}
                                           className='text-[10px] opacity-50 italic hover:text-primary transition-colors flex items-center gap-0.5 mr-1'
                                         >
-                                          <Clock className='size-2.5' /> edited
+                                          <Clock className='size-2.5' /> {expandedEditsMessageId === v._id ? 'Hide edits' : 'Show edits'}
                                         </button>
                                       )}
                                       <time className='text-[10px] opacity-50 flex items-center gap-1 leading-none'>
@@ -410,67 +416,6 @@ function Chat() {
         <MessageInput />
         <GroupModals />
       </div>
-
-      {/* Edit History Modal */}
-      {showHistoryMsg && (
-        <div className="modal modal-open">
-          <div className="modal-box max-w-md bg-base-100 p-0 overflow-hidden border border-base-300 shadow-2xl rounded-2xl">
-            {/* Modal Header */}
-            <div className="p-4 border-b border-base-300 flex items-center justify-between bg-base-200/50">
-              <div className="flex items-center gap-2">
-                <Clock className="size-5 text-primary" />
-                <h3 className="font-bold text-lg">Edit History</h3>
-              </div>
-              <button
-                onClick={() => setShowHistoryMsg(null)}
-                className="btn btn-ghost btn-sm btn-circle"
-              >
-                <X className="size-5" />
-              </button>
-            </div>
-
-            {/* Modal Body */}
-            <div className="p-4 max-h-[60vh] overflow-y-auto space-y-4">
-              <div className="space-y-4">
-                {/* Current Version */}
-                <div className="relative pl-4 border-l-2 border-primary">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="text-[10px] font-bold text-primary uppercase tracking-wider">Current Version</span>
-                    <span className="text-[10px] opacity-50">{DateFormated(showHistoryMsg.editedAt || showHistoryMsg.updatedAt)}</span>
-                  </div>
-                  <div className="p-3 bg-base-200 rounded-lg text-sm">
-                    {showHistoryMsg.text}
-                  </div>
-                </div>
-
-                {/* Previous Versions */}
-                {[...(showHistoryMsg.editHistory || [])].reverse().map((history, idx) => (
-                  <div key={idx} className="relative pl-4 border-l-2 border-base-300">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-[10px] font-bold opacity-50 uppercase tracking-wider">Version {showHistoryMsg.editHistory.length - idx}</span>
-                      <span className="text-[10px] opacity-40">{DateFormated(history.editedAt)}</span>
-                    </div>
-                    <div className="p-3 bg-base-200/50 rounded-lg text-sm opacity-80">
-                      {history.text}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Modal Footer */}
-            <div className="p-4 bg-base-200/30 flex justify-end">
-              <button
-                onClick={() => setShowHistoryMsg(null)}
-                className="btn btn-primary btn-sm px-6 rounded-full"
-              >
-                Done
-              </button>
-            </div>
-          </div>
-          <div className="modal-backdrop bg-black/40 backdrop-blur-sm" onClick={() => setShowHistoryMsg(null)}></div>
-        </div>
-      )}
       {/* Forwarding Modal */}
       <ForwardModal />
     </div>

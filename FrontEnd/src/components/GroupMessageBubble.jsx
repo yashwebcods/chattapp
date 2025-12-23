@@ -3,11 +3,11 @@ import { DateFormated, getDownloadUrl } from '../lib/utills';
 import { Pencil, Trash2, Clock, Copy, Share2, File, CheckCheck, Download, Loader } from 'lucide-react';
 import { useMessageStore } from '../store/useMessageStore';
 import { useAuthStore } from '../store/useAuthStore';
-import toast from 'react-hot-toast';
 
-const GroupMessageBubble = ({ msg, onEdit, onDelete, onShowHistory, messageEndRef }) => {
+const GroupMessageBubble = ({ msg, onEdit, onDelete, messageEndRef }) => {
     const { authUser } = useAuthStore();
     const { setForwardingMessage, selectedGroup } = useMessageStore();
+    const [isEditsExpanded, setIsEditsExpanded] = React.useState(false);
 
     const isOwnMessage = (msg.senderId === authUser._id) || (msg.senderId?._id === authUser._id);
     const members = selectedGroup?.members || [];
@@ -17,7 +17,6 @@ const GroupMessageBubble = ({ msg, onEdit, onDelete, onShowHistory, messageEndRe
     const handleCopy = () => {
         if (!msg.text) return;
         navigator.clipboard.writeText(msg.text);
-        toast.success('Copied to clipboard');
     };
 
     const renderTextWithMentions = (text) => {
@@ -133,14 +132,23 @@ const GroupMessageBubble = ({ msg, onEdit, onDelete, onShowHistory, messageEndRe
                         <div className="whitespace-pre-wrap">
                             {renderTextWithMentions(msg.text)}
                         </div>
+                        {isEditsExpanded && (msg.editHistory || []).length > 0 && (
+                            <div className="mt-2 space-y-2">
+                                {[...(msg.editHistory || [])].slice().reverse().map((history, idx) => (
+                                    <div key={idx} className="p-2 bg-base-200/50 rounded-lg text-xs opacity-80">
+                                        {history.text}
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                     </>
                 )}
                 <div className="flex justify-between items-end mt-1 gap-2">
                     <div className="flex flex-col">
                         {msg.isEdited && (
-                            <button onClick={(e) => { e.stopPropagation(); onShowHistory(msg); }}
+                            <button onClick={(e) => { e.stopPropagation(); setIsEditsExpanded(v => !v); }}
                                 className='text-[10px] opacity-50 italic hover:text-primary flex items-center gap-0.5'>
-                                <Clock className='size-2.5' /> edited
+                                <Clock className='size-2.5' /> {isEditsExpanded ? 'Hide edits' : 'Show edits'}
                             </button>
                         )}
                     </div>
