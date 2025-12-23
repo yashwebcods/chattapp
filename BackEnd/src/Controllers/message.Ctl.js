@@ -356,12 +356,12 @@ export const sendMessage = async (req, res) => {
                         : `New message from group`;
                 }
 
+                const notificationBody = text || (image ? 'Sent an image' : 'Sent a file');
+
                 const notificationPayload = {
-                    notification: {
-                        title: notificationTitle,
-                        body: text || (image ? 'Sent an image' : 'Sent a file')
-                    },
                     data: {
+                        title: notificationTitle,
+                        body: notificationBody,
                         messageId: newMessage._id.toString(),
                         senderId: senderId.toString(),
                         type: groupId ? 'group' : 'chat',

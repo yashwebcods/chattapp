@@ -70,6 +70,8 @@ export const onForegroundMessage = () => {
 
         const title = notification.title || data.title || 'New Message';
         const body = notification.body || data.body || '';
+        const type = data.type;
+        const id = data.id;
 
         if (body) {
             toast.success(`${title}: ${body}`, { duration: 2500 });
@@ -77,11 +79,27 @@ export const onForegroundMessage = () => {
             toast.success(title, { duration: 2500 });
         }
 
-        // Optional: also trigger a browser notification in foreground (only if permission granted)
-        // This helps when the tab is open but not focused.
+        // Show a single clickable notification (with link data) only when tab is not visible.
+        // Avoids duplicate notifications.
         try {
-            if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
-                new Notification(title, { body });
+            if (
+                typeof document !== 'undefined' &&
+                document.visibilityState !== 'visible' &&
+                typeof Notification !== 'undefined' &&
+                Notification.permission === 'granted' &&
+                'serviceWorker' in navigator
+            ) {
+                navigator.serviceWorker.getRegistration().then((reg) => {
+                    if (!reg) return;
+                    reg.showNotification(title, {
+                        body,
+                        icon: '/favicon.ico',
+                        badge: '/favicon.ico',
+                        tag: type ? `${type}-${id}` : 'chat-message',
+                        data: { type, id },
+                        requireInteraction: true
+                    });
+                });
             }
         } catch (e) {
             // ignore notification errors
