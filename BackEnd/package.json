@@ -21,7 +21,6 @@
     "express": "^4.21.2",
     "firebase-admin": "^13.6.0",
     "jsonwebtoken": "^9.0.2",
-    "mailersend": "^2.6.0",
     "mongodb": "^6.14.1",
     "mongoose": "^8.13.2",
     "path": "^0.12.7",

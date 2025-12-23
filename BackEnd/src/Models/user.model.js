@@ -23,18 +23,6 @@ const userSchema = mongoose.Schema({
         enum: ["manager", "marketing", "seller", "owner", "user"],
         default: "user"
     },
-    isVerified: {
-        type: Boolean,
-        default: false
-    },
-    emailVerificationTokenHash: {
-        type: String,
-        default: null
-    },
-    emailVerificationTokenExpires: {
-        type: Date,
-        default: null
-    },
     tempPasswordEnc: {
         type: String,
         default: null

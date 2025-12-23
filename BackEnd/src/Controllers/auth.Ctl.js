@@ -1,10 +1,8 @@
 import { tokenGenerator } from '../lib/utils.js'
 import bcrypt from 'bcrypt'
-import crypto from 'crypto'
 import User from '../Models/user.model.js'
 import Group from '../Models/group.model.js'
 import cloudnairy from '../lib/cloudimary.js';
-import { sendVerificationEmail } from '../lib/mailerSend.js'
 
 const isDev = process.env.NODE_ENV !== 'production';
 const debug = (...args) => {
@@ -41,16 +39,6 @@ export const Signup = async (req, res) => {
         // Save user to database
 
         if (newUser) {
-            const emailVerificationToken = crypto.randomBytes(32).toString('hex');
-            const emailVerificationTokenHash = crypto
-                .createHash('sha256')
-                .update(emailVerificationToken)
-                .digest('hex');
-
-            newUser.isVerified = false;
-            newUser.emailVerificationTokenHash = emailVerificationTokenHash;
-            newUser.emailVerificationTokenExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
-
             await newUser.save();
 
             // If the new user is a manager or owner, add them to all existing groups
@@ -61,21 +49,14 @@ export const Signup = async (req, res) => {
                 );
             }
 
-            // Don't auto-login the creator - they should stay logged in as themselves
-            const apiBaseUrl = process.env.BACKEND_URL || process.env.API_URL || process.env.APP_URL || `http://localhost:${process.env.PORT || 8001}`;
-            const verifyUrl = `${apiBaseUrl.replace(/\/$/, "")}/api/auth/verify-email?token=${emailVerificationToken}`;
-
-            try {
-                await sendVerificationEmail({
-                    toEmail: newUser.email,
-                    toName: newUser.fullName,
-                    verifyUrl
-                });
-            } catch (emailErr) {
-                console.error('Error sending verification email:', emailErr.message);
-            }
-
-            return res.status(201).json({ message: 'User registered successfully. Please verify your email.' });
+            tokenGenerator(newUser._id, res)
+            return res.status(201).json({
+                _id: newUser._id,
+                fullName: newUser.fullName,
+                email: newUser.email,
+                image: newUser.image,
+                role: newUser.role
+            });
         }
 
         return res.status(500).json({ message: 'Failed to register user' });
@@ -94,10 +75,6 @@ export const Login = async (req, res) => {
             return res.status(401).json({ message: 'Invalid credential' })
         }
 
-        if (!isExist.isVerified) {
-            return res.status(403).json({ message: 'Please verify your email before login' })
-        }
-
         let isRightPassword = await bcrypt.compare(password, isExist.password)
         if (!isRightPassword) {
             return res.status(401).json({ message: 'Invalid credential' })
@@ -105,8 +82,6 @@ export const Login = async (req, res) => {
         tokenGenerator(isExist._id, res)
         return res.status(200).json({
             _id: isExist._id,
-            fullName: isExist.fullName,
-            email: isExist.email,
             fullName: isExist.fullName,
             email: isExist.email,
             image: isExist.image,
@@ -215,44 +190,5 @@ export const deleteUser = async (req, res) => {
     } catch (error) {
         console.error("Error in deleteUser:", error.message);
         res.status(500).json({ message: "Internal Server Error" });
-    }
-}
-
-export const verifyEmail = async (req, res) => {
-    try {
-        const { token } = req.query;
-
-        if (!token) {
-            return res.status(400).json({ message: 'Verification token is required' });
-        }
-
-        const tokenHash = crypto
-            .createHash('sha256')
-            .update(String(token))
-            .digest('hex');
-
-        const user = await User.findOne({
-            emailVerificationTokenHash: tokenHash,
-            emailVerificationTokenExpires: { $gt: new Date() }
-        });
-
-        if (!user) {
-            return res.status(400).json({ message: 'Invalid or expired verification token' });
-        }
-
-        user.isVerified = true;
-        user.emailVerificationTokenHash = null;
-        user.emailVerificationTokenExpires = null;
-        await user.save();
-
-        const redirectUrl = process.env.FRONTEND_URL || process.env.APP_URL;
-        if (redirectUrl) {
-            return res.redirect(`${redirectUrl.replace(/\/$/, "")}/login?verified=1`);
-        }
-
-        return res.status(200).json({ message: 'Email verified successfully' });
-    } catch (error) {
-        console.error('Error in verifyEmail:', error.message);
-        return res.status(500).json({ message: 'Internal server error' });
     }
 }

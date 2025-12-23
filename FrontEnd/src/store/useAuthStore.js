@@ -36,9 +36,14 @@ export const useAuthStore = create((set, get) => ({
     signup: async (data) => {
         set({ isSigningUp: true });
         try {
-            await axiosInstance.post("/auth/signup", data)
-            toast.success("Account created. Please verify your email before login.")
-            set({ authUser: null })
+            const res = await axiosInstance.post("/auth/signup", data)
+            toast.success("Account Created")
+
+            // Only auto-login if no user is currently logged in
+            if (!get().authUser) {
+                set({ authUser: res.data })
+                get().connectSocket()
+            }
         } catch (err) {
             toast.error(err.response.data.message)
         } finally {
