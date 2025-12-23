@@ -24,7 +24,9 @@ export const useAuthStore = create((set, get) => ({
             set({ authUser: res.data })
             get().connectSocket()
         } catch (err) {
-            console.error('Error in check auth', err.message);
+            if (err?.response?.status !== 401) {
+                console.error('Error in check auth', err.message);
+            }
             set({ authUser: null })
         } finally {
             set({ isCheckingAuth: false })
@@ -34,14 +36,9 @@ export const useAuthStore = create((set, get) => ({
     signup: async (data) => {
         set({ isSigningUp: true });
         try {
-            const res = await axiosInstance.post("/auth/signup", data)
-            toast.success("Account Created")
-
-            // Only auto-login if no user is currently logged in
-            if (!get().authUser) {
-                set({ authUser: res.data })
-                get().connectSocket()
-            }
+            await axiosInstance.post("/auth/signup", data)
+            toast.success("Account created. Please verify your email before login.")
+            set({ authUser: null })
         } catch (err) {
             toast.error(err.response.data.message)
         } finally {
@@ -108,7 +105,9 @@ export const useAuthStore = create((set, get) => ({
         try {
             await axiosInstance.put('/auth/update-fcm-token', { fcmToken: token });
         } catch (error) {
-            console.error('Error saving FCM token:', error);
+            if (error?.response?.status !== 401) {
+                console.error('Error saving FCM token:', error);
+            }
         }
     },
 
