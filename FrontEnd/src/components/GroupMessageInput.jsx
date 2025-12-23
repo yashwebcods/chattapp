@@ -152,7 +152,11 @@ const GroupMessageInput = ({ groupId }) => {
 
             {imagePreview && (
                 <div className='mb-3 relative inline-block'>
-                    <img src={imagePreview} className='max-w-[200px] rounded-lg' alt="preview" />
+                    <img
+                        src={imagePreview}
+                        className='w-24 h-24 sm:w-32 sm:h-32 max-w-[160px] sm:max-w-[220px] object-cover rounded-lg border border-base-300'
+                        alt="preview"
+                    />
                     <button onClick={() => setImagePreview(null)} className='btn btn-circle btn-sm absolute -top-2 -right-2'><X className='size-4' /></button>
                 </div>
             )}

@@ -1,5 +1,6 @@
 import { initializeApp } from "firebase/app";
 import { getMessaging, getToken, onMessage } from "firebase/messaging";
+import toast from 'react-hot-toast';
 
 const firebaseConfig = {
     apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -18,7 +19,8 @@ export const messaging = getMessaging(app);
 export const registerServiceWorker = async () => {
     if ('serviceWorker' in navigator) {
         try {
-            const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+            const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js', { scope: '/' });
+            await navigator.serviceWorker.ready;
             console.log('Service Worker registered successfully:', registration);
             return registration;
         } catch (error) {
@@ -62,6 +64,27 @@ export const requestPermission = async () => {
 export const onForegroundMessage = () => {
     return onMessage(messaging, (payload) => {
         console.log('Foreground message received:', payload);
-        // You can update UI here (like a toast)
+
+        const data = payload?.data || {};
+        const notification = payload?.notification || {};
+
+        const title = notification.title || data.title || 'New Message';
+        const body = notification.body || data.body || '';
+
+        if (body) {
+            toast.success(`${title}: ${body}`, { duration: 2500 });
+        } else {
+            toast.success(title, { duration: 2500 });
+        }
+
+        // Optional: also trigger a browser notification in foreground (only if permission granted)
+        // This helps when the tab is open but not focused.
+        try {
+            if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+                new Notification(title, { body });
+            }
+        } catch (e) {
+            // ignore notification errors
+        }
     });
 };

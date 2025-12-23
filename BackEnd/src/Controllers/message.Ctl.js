@@ -377,10 +377,31 @@ export const sendMessage = async (req, res) => {
                     if (!receiverSocketId) {
                         const receiver = await User.findById(receiverId);
                         if (receiver?.fcmTokens && receiver.fcmTokens.length > 0) {
-                            await admin.messaging().sendEachForMulticast({
-                                tokens: [...new Set(receiver.fcmTokens)],
+                            const tokens = [...new Set(receiver.fcmTokens)];
+                            const pushRes = await admin.messaging().sendEachForMulticast({
+                                tokens,
                                 ...notificationPayload
                             });
+                            console.log('📲 PUSH multicast result:', {
+                                receiverId: receiverId.toString(),
+                                successCount: pushRes.successCount,
+                                failureCount: pushRes.failureCount
+                            });
+
+                            if (pushRes.failureCount > 0) {
+                                const invalidTokens = [];
+                                pushRes.responses.forEach((r, i) => {
+                                    const code = r.error?.code;
+                                    if (code === 'messaging/registration-token-not-registered' || code === 'messaging/invalid-registration-token') {
+                                        invalidTokens.push(tokens[i]);
+                                    }
+                                });
+
+                                if (invalidTokens.length > 0) {
+                                    await User.findByIdAndUpdate(receiverId, { $pull: { fcmTokens: { $in: invalidTokens } } });
+                                    console.log('🧹 Removed invalid FCM tokens:', { receiverId: receiverId.toString(), count: invalidTokens.length });
+                                }
+                            }
                             console.log(`📲 PUSH sent to ${receiver.fullName}`);
                         }
                     }

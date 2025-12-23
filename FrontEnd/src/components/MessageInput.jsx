@@ -183,7 +183,7 @@ export const MessageInput = () => {
             <img
               src={imagePreview}
               alt="Preview"
-              className="w-20 h-20 object-cover rounded-lg border border-zinc-700"
+              className="w-24 h-24 sm:w-32 sm:h-32 max-w-[160px] sm:max-w-[220px] object-cover rounded-lg border border-base-300"
             />
             <button
               onClick={removeImage}
