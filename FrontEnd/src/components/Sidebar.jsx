@@ -5,6 +5,11 @@ import { User, Users, Search, Trash2 } from 'lucide-react'
 import { useAuthStore } from '../store/useAuthStore'
 import { useNavigate } from 'react-router-dom'
 
+const isDev = import.meta.env.DEV;
+const debug = (...args) => {
+    if (isDev) console.log(...args);
+};
+
 function Sidebar({ onSelectUser }) {
     const { getUsers, users, groups, selectedUser, isUsersLoading, setSelectedUser, setGroup, unreadCounts, deleteUser } = useMessageStore()
     const { onlineUsers, authUser } = useAuthStore()
@@ -25,12 +30,12 @@ function Sidebar({ onSelectUser }) {
     }, [getUsers])
 
     useEffect(() => {
-        console.log('🎨 Sidebar - DEBUG: unreadCounts:', unreadCounts);
+        debug('🎨 Sidebar - DEBUG: unreadCounts:', unreadCounts);
         if (users.length > 0) {
-            console.log('🎨 Sidebar - DEBUG: Sample User ID:', users[0]._id, 'Type:', typeof users[0]._id);
+            debug('🎨 Sidebar - DEBUG: Sample User ID:', users[0]._id, 'Type:', typeof users[0]._id);
             const sampleId = users[0]._id;
-            console.log('🎨 Sidebar - DEBUG: Count for sample:', unreadCounts[sampleId]);
-            console.log('🎨 Sidebar - DEBUG: All unreadCount keys:', Object.keys(unreadCounts));
+            debug('🎨 Sidebar - DEBUG: Count for sample:', unreadCounts[sampleId]);
+            debug('🎨 Sidebar - DEBUG: All unreadCount keys:', Object.keys(unreadCounts));
         }
     }, [unreadCounts, users]);
 

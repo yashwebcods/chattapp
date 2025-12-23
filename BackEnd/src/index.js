@@ -12,6 +12,11 @@ import groupRoute from './Routes/group.route.js'
 import { app, server } from './lib/socket.js';
 dotenv.config();
 
+ const isDev = process.env.NODE_ENV !== 'production';
+ const debug = (...args) => {
+  if (isDev) console.log(...args);
+ };
+
 connectDB();
 const port = process.env.PORT || 8001;
 const __dirname = path.resolve()
@@ -40,11 +45,11 @@ if (process.env.NODE_ENV === "production") {
 
 server.listen(port, (err) => {
   if (err) {
-    console.log(err);
+    console.error(err);
     return false;
 
   }
-  console.log('server is connected', port);
+  debug('server is connected', port);
 
 })
 export default app;

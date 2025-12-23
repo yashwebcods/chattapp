@@ -3,6 +3,11 @@ import { useMessageStore } from '../store/useMessageStore'
 import { useAuthStore } from '../store/useAuthStore'
 import { X, MoreVertical, Trash2, CheckSquare, ArrowLeft, Users, UserPlus } from 'lucide-react'
 
+ const isDev = import.meta.env.DEV;
+ const debug = (...args) => {
+   if (isDev) console.log(...args);
+ };
+
 export const ChatHeader = () => {
   // Use selector to ensure re-renders when typing state changes
   const selectedUser = useMessageStore((state) => state.selectedUser)
@@ -55,8 +60,7 @@ export const ChatHeader = () => {
   const groupTypers = selectedGroup && groupTypingData[selectedGroup._id];
   const isGroupTyping = groupTypers && groupTypers.length > 0;
 
-  // Debug logging
-  console.log("🎨 ChatHeader State:", {
+  debug("🎨 ChatHeader State:", {
     selectedUser: selectedUser?.fullName,
     selectedGroup: selectedGroup?.name,
     typingUsers: typingUsers,
@@ -66,9 +70,8 @@ export const ChatHeader = () => {
     groupTypers
   });
 
-  // Monitor typing state changes
   React.useEffect(() => {
-    console.log("🔄 ChatHeader Re-rendered! Typing state:", {
+    debug("🔄 ChatHeader Re-rendered! Typing state:", {
       typingUsers,
       isUserTyping,
       selectedUserId: selectedUser?._id

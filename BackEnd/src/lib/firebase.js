@@ -3,6 +3,11 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
+ const isDev = process.env.NODE_ENV !== 'production';
+ const debug = (...args) => {
+     if (isDev) console.log(...args);
+ };
+
 // You should put your service account key in a JSON file or environment variables
 // For this implementation, we'll assume environment variables for security
 // Or you can load a serviceAccountKey.json file if provided
@@ -25,7 +30,7 @@ try {
     admin.initializeApp({
         credential: admin.credential.cert(serviceAccount)
     });
-    console.log("Firebase Admin Initialized");
+    debug("Firebase Admin Initialized");
 } catch (error) {
     console.error("Firebase Admin Initialization Error:", error);
 }

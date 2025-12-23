@@ -4,20 +4,25 @@ import User from '../Models/user.model.js'
 import Group from '../Models/group.model.js'
 import cloudnairy from '../lib/cloudimary.js';
 
+ const isDev = process.env.NODE_ENV !== 'production';
+ const debug = (...args) => {
+     if (isDev) console.log(...args);
+ };
+
 
 export const Signup = async (req, res) => {
     try {
         const { email, fullName, password } = req.body;
 
         if (password.length < 6) {
-            console.log('❌ Signup failed: Password too short');
+            debug('❌ Signup failed: Password too short');
             return res.status(400).json({ message: 'Password must be greater than 6 characters' });
         }
 
         // Check if the user already exists (only check email, not fullName)
         let isExist = await User.findOne({ email });
         if (isExist) {
-            console.log('❌ Signup failed: Email already exists', { email });
+            debug('❌ Signup failed: Email already exists', { email });
             return res.status(400).json({ message: 'User with this email already exists' });
         }
 
@@ -110,9 +115,7 @@ export const updateProfile = async (req, res) => {
 
     } catch (err) {
         res.status(501).json({ err: err.message })
-        console.log(req.headers.origin)
-
-        console.log(err.message);
+        console.error('Error in updateProfile:', err.message);
 
     }
 }
@@ -121,7 +124,7 @@ export const checkuser = (req, res) => {
     try {
         return res.status(200).json(req.user)
     } catch (err) {
-        console.log("Error in checkauth-Controller", err)
+        console.error("Error in checkauth-Controller", err)
         return res.status(500).json({ message: "Internal Servre Error", err: err.message })
     }
 }
@@ -141,10 +144,10 @@ export const updateFcmToken = async (req, res) => {
             { $addToSet: { fcmTokens: fcmToken } }
         );
 
-        console.log(`✅ FCM Token added for user: ${req.user.fullName}`);
+        debug(`✅ FCM Token added for user: ${req.user.fullName}`);
         res.status(200).json({ message: "FCM Token updated successfully" });
     } catch (error) {
-        console.log("Error in updateFcmToken:", error.message);
+        console.error("Error in updateFcmToken:", error.message);
         res.status(500).json({ message: "Internal Server Error" });
     }
 }
@@ -177,11 +180,11 @@ export const deleteUser = async (req, res) => {
             { $pull: { members: id } }
         );
 
-        console.log(`🗑️ User deleted by owner: ${deletedUser.fullName}`);
+        debug(`🗑️ User deleted by owner: ${deletedUser.fullName}`);
         res.status(200).json({ message: "User deleted successfully" });
 
     } catch (error) {
-        console.log("Error in deleteUser:", error.message);
+        console.error("Error in deleteUser:", error.message);
         res.status(500).json({ message: "Internal Server Error" });
     }
 }

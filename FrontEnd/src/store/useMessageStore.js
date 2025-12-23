@@ -4,6 +4,10 @@ import toast from "react-hot-toast";
 import { useAuthStore } from './useAuthStore'
 import { persist } from "zustand/middleware";
 
+ const isDev = import.meta.env.DEV;
+ const debug = (...args) => {
+     if (isDev) console.log(...args);
+ };
 
 export const useMessageStore = create(persist((set, get) => ({
 
@@ -322,10 +326,10 @@ export const useMessageStore = create(persist((set, get) => ({
 
     subcribeToMessages: () => {
         const socket = useAuthStore.getState().socket;
-        console.log("subcribeToMessages called. Socket:", socket ? "Connected" : "Null");
+        debug("subcribeToMessages called. Socket:", socket ? "Connected" : "Null");
 
         if (!socket) {
-            console.log("No socket found, attempting to connect...");
+            debug("No socket found, attempting to connect...");
             useAuthStore.getState().connectSocket();
             // Retry after connection
             setTimeout(() => {
@@ -350,10 +354,10 @@ export const useMessageStore = create(persist((set, get) => ({
     setupMessageListener: (socket) => {
         // Remove existing listener to prevent duplicates
         socket.off("newMessage");
-        console.log("✅ Setting up newMessage listener");
+        debug("✅ Setting up newMessage listener");
 
         socket.on("newMessage", (newMessage) => {
-            console.log("📨 newMessage event received:", newMessage);
+            debug("📨 newMessage event received:", newMessage);
             const { selectedUser, message, markAsSeen, users } = get();
             const authUser = useAuthStore.getState().authUser;
 
@@ -418,7 +422,7 @@ export const useMessageStore = create(persist((set, get) => ({
 
         // Listen for Seen events from other users
         socket.on("messagesSeen", ({ seenBy, seenByName, fromUser, groupId }) => {
-            console.log("👀 messagesSeen event received:", { seenBy, seenByName, fromUser, groupId });
+            debug("👀 messagesSeen event received:", { seenBy, seenByName, fromUser, groupId });
             const { message, selectedUser, selectedGroup } = get();
 
             // Handle DM seen
@@ -460,7 +464,7 @@ export const useMessageStore = create(persist((set, get) => ({
             socket.off("chatCleared");
             socket.off("messagesDeleted");
             socket.off("messageEdited");
-            console.log("Unsubscribed from message events");
+            debug("Unsubscribed from message events");
         }
     },
 
@@ -470,13 +474,13 @@ export const useMessageStore = create(persist((set, get) => ({
         if (!socket) return;
 
         socket.on("chatCleared", ({ clearedBy, userId }) => {
-            console.log("🗑️ Chat cleared event received:", { clearedBy, userId });
+            debug("🗑️ Chat cleared event received:", { clearedBy, userId });
             const authUser = useAuthStore.getState().authUser;
             const { selectedUser } = get();
 
             // If we're viewing this chat, clear the messages
             if (selectedUser && selectedUser._id === userId) {
-                console.log("✅ Clearing chat UI for:", userId);
+                debug("✅ Clearing chat UI for:", userId);
                 set({ message: [] });
             }
         });
@@ -484,7 +488,7 @@ export const useMessageStore = create(persist((set, get) => ({
 
     subscribeToGroupMessages: () => {
         const socket = useAuthStore.getState().socket;
-        console.log("subscribeToGroupMessages called. Socket:", socket ? "Connected" : "Null");
+        debug("subscribeToGroupMessages called. Socket:", socket ? "Connected" : "Null");
         if (!socket) return;
 
         // Prevent duplicate listeners (subscribeToGroupMessages can be called multiple times)
@@ -492,7 +496,7 @@ export const useMessageStore = create(persist((set, get) => ({
         socket.off("groupUpdate");
 
         socket.on("newGroupMessage", (newMessage) => {
-            console.log("📨 newGroupMessage event received:", newMessage);
+            debug("📨 newGroupMessage event received:", newMessage);
             const { selectedGroup, groups, unreadCounts, message } = get();
             const authUser = useAuthStore.getState().authUser;
 
@@ -502,7 +506,7 @@ export const useMessageStore = create(persist((set, get) => ({
             const isMyMessage = senderId && authUserId && senderId.toString() === authUserId.toString();
 
             if (isMyMessage) return;
-            console.log("📊 Current group message state:", {
+            debug("📊 Current group message state:", {
                 selectedGroup: selectedGroup?.name,
                 groupsCount: groups.length,
                 messageCount: message.length,
@@ -515,7 +519,7 @@ export const useMessageStore = create(persist((set, get) => ({
                 selectedGroup._id === newMessage.groupId?.toString()
             );
 
-            console.log("🔍 Group message analysis:", {
+            debug("🔍 Group message analysis:", {
                 isCurrentGroup,
                 selectedGroupId: selectedGroup?._id,
                 messageGroupId: newMessage.groupId?._id || newMessage.groupId,
@@ -524,7 +528,7 @@ export const useMessageStore = create(persist((set, get) => ({
             });
 
             if (isCurrentGroup) {
-                console.log("➕ Adding message to current group chat");
+                debug("➕ Adding message to current group chat");
                 set({ message: [...message, newMessage] });
                 get().markAsSeen(selectedGroup._id); // Mark group messages as seen
             }
@@ -547,9 +551,9 @@ export const useMessageStore = create(persist((set, get) => ({
                 }
 
                 // Show notification with group name (2 second duration)
-                console.log("🔔 Showing group notification:", groupName);
+                debug("🔔 Showing group notification:", groupName);
                 toast.success(`New message from ${groupName}`, { duration: 2000 });
-                console.log(`New message from ${groupName}`);
+                debug(`New message from ${groupName}`);
 
                 // Increment unread count for this group
                 let gId = newMessage.groupId?._id || newMessage.groupId;
@@ -578,7 +582,7 @@ export const useMessageStore = create(persist((set, get) => ({
 
         // Listen for group updates (member add/remove)
         socket.on("groupUpdate", (updatedGroup) => {
-            console.log("groupUpdate event received:", updatedGroup);
+            debug("groupUpdate event received:", updatedGroup);
             const { groups, selectedGroup } = get();
 
             // Update groups list
@@ -737,7 +741,7 @@ export const useMessageStore = create(persist((set, get) => ({
             });
 
             toast.success("Messages deleted");
-            console.log("✅ Messages deleted locally, no page reload");
+            debug("✅ Messages deleted locally, no page reload");
         } catch (error) {
             toast.error(error.response?.data?.message || "Failed to delete messages");
         }
@@ -751,7 +755,7 @@ export const useMessageStore = create(persist((set, get) => ({
 
             // The backend sends a system message to the other user via socket
             // The setupMessageListener will receive it and update their UI
-            console.log("✅ Chat cleared for user:", userId);
+            debug("✅ Chat cleared for user:", userId);
         } catch (error) {
             toast.error(error.response?.data?.message || "Failed to clear chat");
         }
@@ -781,7 +785,7 @@ export const useMessageStore = create(persist((set, get) => ({
         if (!socket) return;
 
         socket.on("messageEdited", (updatedMessage) => {
-            console.log("✏️ messageEdited event received:", updatedMessage);
+            debug("✏️ messageEdited event received:", updatedMessage);
             const { message } = get();
 
             // Update the message in state if it exists
@@ -809,40 +813,40 @@ export const useMessageStore = create(persist((set, get) => ({
     subscribeToTypingEvents: () => {
         const socket = useAuthStore.getState().socket;
         if (!socket) {
-            console.log("⚠️ subscribeToTypingEvents: No socket available");
+            debug("⚠️ subscribeToTypingEvents: No socket available");
             return;
         }
 
-        console.log("✅ Subscribing to typing events...");
+        debug("✅ Subscribing to typing events...");
 
         socket.on("typing", ({ senderId }) => {
-            console.log("🔵 TYPING event received from:", senderId);
+            debug("🔵 TYPING event received from:", senderId);
             const { typingUsers } = get();
-            console.log("Current typing users:", typingUsers);
+            debug("Current typing users:", typingUsers);
             if (!typingUsers.includes(senderId)) {
                 set({ typingUsers: [...typingUsers, senderId] });
-                console.log("✅ Added user to typing list:", senderId);
+                debug("✅ Added user to typing list:", senderId);
             }
         });
 
         socket.on("stopTyping", ({ senderId }) => {
-            console.log("🔴 STOP_TYPING event received from:", senderId);
+            debug("🔴 STOP_TYPING event received from:", senderId);
             const { typingUsers } = get();
             set({ typingUsers: typingUsers.filter(id => id !== senderId) });
-            console.log("✅ Removed user from typing list:", senderId);
+            debug("✅ Removed user from typing list:", senderId);
         });
 
         socket.on("groupTyping", ({ groupId, userId, userName }) => {
-            console.log("🔵 GROUP_TYPING event received:", { groupId, userId, userName });
+            debug("🔵 GROUP_TYPING event received:", { groupId, userId, userName });
             const { groupTypingData } = get();
             const authUser = useAuthStore.getState().authUser;
             if (userId === authUser._id) {
-                console.log("⏭️ Skipping self typing event");
+                debug("⏭️ Skipping self typing event");
                 return; // Don't show self typing
             }
 
             const currentTypers = groupTypingData[groupId] || [];
-            console.log("Current typers in group:", currentTypers);
+            debug("Current typers in group:", currentTypers);
             if (!currentTypers.includes(userName)) {
                 set({
                     groupTypingData: {
@@ -850,12 +854,12 @@ export const useMessageStore = create(persist((set, get) => ({
                         [groupId]: [...currentTypers, userName]
                     }
                 });
-                console.log("✅ Added user to group typing list:", userName);
+                debug("✅ Added user to group typing list:", userName);
             }
         });
 
         socket.on("groupStopTyping", ({ groupId, userId, userName }) => {
-            console.log("🔴 GROUP_STOP_TYPING event received:", { groupId, userId, userName });
+            debug("🔴 GROUP_STOP_TYPING event received:", { groupId, userId, userName });
             const { groupTypingData } = get();
             const currentTypers = groupTypingData[groupId] || [];
             set({
@@ -864,7 +868,7 @@ export const useMessageStore = create(persist((set, get) => ({
                     [groupId]: currentTypers.filter(name => name !== userName)
                 }
             });
-            console.log("✅ Removed user from group typing list:", userName);
+            debug("✅ Removed user from group typing list:", userName);
         });
     },
 
@@ -881,40 +885,40 @@ export const useMessageStore = create(persist((set, get) => ({
     sendTyping: (receiverId) => {
         const socket = useAuthStore.getState().socket;
         if (socket) {
-            console.log("🔵 Emitting TYPING event to:", receiverId);
+            debug("🔵 Emitting TYPING event to:", receiverId);
             socket.emit("typing", { toUserId: receiverId });
         } else {
-            console.log("⚠️ Cannot emit TYPING: No socket connection");
+            debug("⚠️ Cannot emit TYPING: No socket connection");
         }
     },
 
     sendStopTyping: (receiverId) => {
         const socket = useAuthStore.getState().socket;
         if (socket) {
-            console.log("🔴 Emitting STOP_TYPING event to:", receiverId);
+            debug("🔴 Emitting STOP_TYPING event to:", receiverId);
             socket.emit("stopTyping", { toUserId: receiverId });
         } else {
-            console.log("⚠️ Cannot emit STOP_TYPING: No socket connection");
+            debug("⚠️ Cannot emit STOP_TYPING: No socket connection");
         }
     },
 
     sendGroupTyping: (groupId, userName) => {
         const socket = useAuthStore.getState().socket;
         if (socket) {
-            console.log("🔵 Emitting GROUP_TYPING event:", { groupId, userName });
+            debug("🔵 Emitting GROUP_TYPING event:", { groupId, userName });
             socket.emit("groupTyping", { groupId, userName });
         } else {
-            console.log("⚠️ Cannot emit GROUP_TYPING: No socket connection");
+            debug("⚠️ Cannot emit GROUP_TYPING: No socket connection");
         }
     },
 
     sendGroupStopTyping: (groupId, userName) => {
         const socket = useAuthStore.getState().socket;
         if (socket) {
-            console.log("🔴 Emitting GROUP_STOP_TYPING event:", { groupId, userName });
+            debug("🔴 Emitting GROUP_STOP_TYPING event:", { groupId, userName });
             socket.emit("groupStopTyping", { groupId, userName });
         } else {
-            console.log("⚠️ Cannot emit GROUP_STOP_TYPING: No socket connection");
+            debug("⚠️ Cannot emit GROUP_STOP_TYPING: No socket connection");
         }
     },
 

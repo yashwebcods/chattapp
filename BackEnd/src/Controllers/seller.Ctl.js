@@ -45,7 +45,7 @@ export const addseller = async (req, res) => {
         }
 
     } catch (error) {
-        console.log('Error in signup SellerCtl : ', error.message);
+        console.error('Error in signup SellerCtl : ', error.message);
         return res.status(500).json({ error: error.message })
     }
 }
@@ -74,7 +74,7 @@ export const getSeller = async (req, res) => {
             return res.status(400).json({ message: 'Seller Data not fetched' })
         }
     } catch (error) {
-        console.log('Error in getSeller : ', error.message);
+        console.error('Error in getSeller : ', error.message);
         return res.status(500).json({ error: error.message })
     }
 }

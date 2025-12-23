@@ -3,6 +3,11 @@ import User from "../Models/user.model.js";
 import Message from "../Models/message.model.js";
 import Seller from "../Models/seller.model.js";
 
+ const isDev = process.env.NODE_ENV !== 'production';
+ const debug = (...args) => {
+     if (isDev) console.log(...args);
+ };
+
 export const createGroup = async (req, res) => {
     try {
         const { sellerId } = req.body;
@@ -70,7 +75,7 @@ export const createGroup = async (req, res) => {
 
         res.status(201).json(newGroup);
     } catch (error) {
-        console.log("Error in createGroup controller: ", error.message);
+        console.error("Error in createGroup controller: ", error.message);
         res.status(500).json({ message: "Internal Server Error" });
     }
 };
@@ -94,7 +99,7 @@ export const getGroupMessages = async (req, res) => {
 
         res.status(200).json(messages.reverse());
     } catch (error) {
-        console.log("Error in getGroupMessages controller: ", error.message);
+        console.error("Error in getGroupMessages controller: ", error.message);
         res.status(500).json({ message: "Internal Server Error" });
     }
 };
@@ -104,20 +109,20 @@ export const getGroups = async (req, res) => {
     try {
         const userId = req.user._id;
 
-        console.log(`🔍 getGroups called for user: ${userId}`);
+        debug(`🔍 getGroups called for user: ${userId}`);
         const groups = await Group.find({ members: userId })
             .populate('sellerId')
             .populate('members', 'fullName email role image')
             .populate('admin', 'fullName email');
 
-        console.log(`Found ${groups.length} raw groups for user`);
+        debug(`Found ${groups.length} raw groups for user`);
 
         const docs = await Seller.find().sort({ createdAt: 1 });
         const validGroups = [];
 
         for (const group of groups) {
             if (!group.sellerId) {
-                console.log(`⚠️ Group ${group._id} has no sellerId, deleting...`);
+                debug(`⚠️ Group ${group._id} has no sellerId, deleting...`);
                 await Group.findByIdAndDelete(group._id);
                 continue;
             }
@@ -125,14 +130,14 @@ export const getGroups = async (req, res) => {
             const validMembers = group.members.filter(member => member !== null);
 
             if (validMembers.length !== group.members.length) {
-                console.log(`⚠️ Group ${group._id} has invalid members, cleaning up...`);
+                debug(`⚠️ Group ${group._id} has invalid members, cleaning up...`);
                 group.members = validMembers.map(m => m._id);
                 await group.save();
                 await group.populate('members', 'fullName email role image');
             }
 
             if (validMembers.length === 0) {
-                console.log(`⚠️ Group ${group._id} has no valid members, deleting...`);
+                debug(`⚠️ Group ${group._id} has no valid members, deleting...`);
                 await Group.findByIdAndDelete(group._id);
                 continue;
             }
@@ -156,11 +161,11 @@ export const getGroups = async (req, res) => {
             });
         }
 
-        console.log(`✅ Returning ${validGroups.length} valid groups`);
+        debug(`✅ Returning ${validGroups.length} valid groups`);
         res.status(200).json(validGroups);
 
     } catch (error) {
-        console.log("Error in getGroups controller: ", error.message);
+        console.error("Error in getGroups controller: ", error.message);
         console.error("Full error:", error);
         res.status(500).json({ message: "Internal Server Error", error: error.message });
     }
@@ -228,7 +233,7 @@ export const addMemberToGroup = async (req, res) => {
             group
         });
     } catch (error) {
-        console.log("Error in addMemberToGroup controller: ", error.message);
+        console.error("Error in addMemberToGroup controller: ", error.message);
         res.status(500).json({ message: "Internal Server Error" });
     }
 };
@@ -297,7 +302,7 @@ export const removeMemberFromGroup = async (req, res) => {
             group
         });
     } catch (error) {
-        console.log("Error in removeMemberFromGroup controller: ", error.message);
+        console.error("Error in removeMemberFromGroup controller: ", error.message);
         res.status(500).json({ message: "Internal Server Error" });
     }
 };

@@ -3,6 +3,11 @@ import { axiosInstance } from '../lib/axios'
 import toast from 'react-hot-toast'
 import { io } from 'socket.io-client'
 
+ const isDev = import.meta.env.DEV;
+ const debug = (...args) => {
+     if (isDev) console.log(...args);
+ };
+
 export const useAuthStore = create((set, get) => ({
 
     authUser: null,
@@ -19,7 +24,7 @@ export const useAuthStore = create((set, get) => ({
             set({ authUser: res.data })
             get().connectSocket()
         } catch (err) {
-            console.log('Error in check auth', err.message);
+            console.error('Error in check auth', err.message);
             set({ authUser: null })
         } finally {
             set({ isCheckingAuth: false })
@@ -92,7 +97,7 @@ export const useAuthStore = create((set, get) => ({
             set({ authUser: res.data })
             toast.success("Profile updated successfully")
         } catch (error) {
-            console.log('Error in profile update', error.message);
+            console.error('Error in profile update', error.message);
             toast.error(error.response.data.message)
         } finally {
             set({ updateProfile: false })
@@ -116,7 +121,7 @@ export const useAuthStore = create((set, get) => ({
             socket.disconnect();
         }
 
-        console.log('Connecting socket for user:', authUser._id);
+        debug('Connecting socket for user:', authUser._id);
 
         const BASE_URL = import.meta.env.MODE === "development" ? "http://localhost:8001" : "/";
         const newSocket = io(BASE_URL, {
@@ -126,11 +131,11 @@ export const useAuthStore = create((set, get) => ({
         })
 
         newSocket.on('connect', () => {
-            console.log('Socket connected successfully');
+            debug('Socket connected successfully');
         });
 
         newSocket.on('disconnect', () => {
-            console.log('Socket disconnected');
+            debug('Socket disconnected');
         });
 
         newSocket.on('connect_error', (error) => {

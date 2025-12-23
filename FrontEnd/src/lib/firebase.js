@@ -2,6 +2,11 @@ import { initializeApp } from "firebase/app";
 import { getMessaging, getToken, onMessage } from "firebase/messaging";
 import toast from 'react-hot-toast';
 
+ const isDev = import.meta.env.DEV;
+ const debug = (...args) => {
+     if (isDev) console.log(...args);
+ };
+
 const firebaseConfig = {
     apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
     authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
@@ -21,7 +26,7 @@ export const registerServiceWorker = async () => {
         try {
             const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js', { scope: '/' });
             await navigator.serviceWorker.ready;
-            console.log('Service Worker registered successfully:', registration);
+            debug('Service Worker registered successfully:', registration);
             return registration;
         } catch (error) {
             console.error('Service Worker registration failed:', error);
@@ -38,7 +43,7 @@ export const requestPermission = async () => {
 
         const permission = await Notification.requestPermission();
         if (permission === 'granted') {
-            console.log('Notification permission granted');
+            debug('Notification permission granted');
 
             const token = await getToken(messaging, {
                 vapidKey: import.meta.env.VITE_FIREBASE_VAPID_KEY,
@@ -46,12 +51,12 @@ export const requestPermission = async () => {
             });
 
             if (token) {
-                console.log('FCM Token:', token);
+                debug('FCM Token:', token);
                 // Save token to your backend
             }
             return token;
         } else {
-            console.log('Notification permission denied');
+            debug('Notification permission denied');
             return null;
         }
     } catch (error) {
@@ -63,7 +68,7 @@ export const requestPermission = async () => {
 // Handle messages when app is in foreground
 export const onForegroundMessage = () => {
     return onMessage(messaging, (payload) => {
-        console.log('Foreground message received:', payload);
+        debug('Foreground message received:', payload);
 
         const data = payload?.data || {};
         const notification = payload?.notification || {};

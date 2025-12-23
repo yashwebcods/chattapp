@@ -7,6 +7,11 @@ import admin from '../lib/firebase.js'
 import Message from '../Models/message.model.js'
 import { supabase, bucketName } from '../lib/supabase.js'
 
+ const isDev = process.env.NODE_ENV !== 'production';
+ const debug = (...args) => {
+     if (isDev) console.log(...args);
+ };
+
 /* ============================================================
    GET ALL USERS EXCEPT LOGGED-IN USER
 ============================================================ */
@@ -107,7 +112,7 @@ export const markMessagesAsSeen = async (req, res) => {
 
         res.status(200).json({ message: "Messages marked as seen" });
     } catch (error) {
-        console.log("Error in markMessagesAsSeen:", error.message);
+        console.error("Error in markMessagesAsSeen:", error.message);
         res.status(500).json({ error: "Internal server error" });
     }
 };
@@ -143,7 +148,7 @@ export const getMessage = async (req, res) => {
         // Reverse to maintain chronological order for the frontend list
         res.status(200).json(message.reverse());
     } catch (err) {
-        console.log('Error in getMessage:', err.message);
+        console.error('Error in getMessage:', err.message);
         res.status(500).json({ error: 'Internal server error' });
     }
 };
@@ -186,7 +191,7 @@ export const sendMessage = async (req, res) => {
                 imageResourceType = 'external';
             } else {
                 try {
-                    console.log('🖼️ Uploading image to Cloudinary...');
+                    debug('🖼️ Uploading image to Cloudinary...');
                     const uploadRes = await cloudnairy.uploader.upload(image, {
                         resource_type: 'auto',
                         folder: 'chat_images'
@@ -194,7 +199,7 @@ export const sendMessage = async (req, res) => {
                     imageUrl = uploadRes.secure_url;
                     messageType = 'image';
                     imageResourceType = uploadRes.resource_type;
-                    console.log('✅ Image uploaded:', { url: imageUrl, type: imageResourceType });
+                    debug('✅ Image uploaded:', { url: imageUrl, type: imageResourceType });
                 } catch (err) {
                     console.error('Image upload error:', err);
                     return res.status(400).json({ error: 'Failed to upload image' });
@@ -211,10 +216,10 @@ export const sendMessage = async (req, res) => {
                 fileResourceType = 'external';
             } else {
             try {
-                console.log('📄 Processing file upload...');
-                console.log(' - File type:', typeof file);
-                console.log(' - File length:', file ? file.length : 'null');
-                if (file && file.length > 50) console.log(' - File start:', file.substring(0, 50));
+                debug('📄 Processing file upload...');
+                debug(' - File type:', typeof file);
+                debug(' - File length:', file ? file.length : 'null');
+                if (file && file.length > 50) debug(' - File start:', file.substring(0, 50));
 
                 // Convert base64 to buffer
                 // Format matches: data:application/pdf;base64,.....
@@ -228,8 +233,8 @@ export const sendMessage = async (req, res) => {
                 const mimeType = matches[1];
                 const buffer = Buffer.from(matches[2], 'base64');
 
-                console.log(' - MIME type:', mimeType);
-                console.log(' - Buffer size:', buffer.length, 'bytes');
+                debug(' - MIME type:', mimeType);
+                debug(' - Buffer size:', buffer.length, 'bytes');
 
                 // Generate unique filename
                 const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
@@ -237,8 +242,8 @@ export const sendMessage = async (req, res) => {
                 const sanitizedFileName = (fileName || 'file').replace(/[^a-zA-Z0-9.-]/g, '_');
                 const path = `${uniqueSuffix}_${sanitizedFileName}`;
 
-                console.log(' - Upload path:', path);
-                console.log(' - Uploading to Supabase bucket:', bucketName);
+                debug(' - Upload path:', path);
+                debug(' - Uploading to Supabase bucket:', bucketName);
 
                 const { data, error } = await supabase
                     .storage
@@ -257,7 +262,7 @@ export const sendMessage = async (req, res) => {
                     });
                 }
 
-                console.log('✅ File uploaded to Supabase:', data);
+                debug('✅ File uploaded to Supabase:', data);
 
                 // Get Public URL
                 const { data: publicURLData } = supabase
@@ -268,7 +273,7 @@ export const sendMessage = async (req, res) => {
                 fileUrl = publicURLData.publicUrl;
                 messageType = 'file';
                 fileResourceType = 'supabase'; // Mark as stored in Supabase
-                console.log('✅ Public URL generated:', fileUrl);
+                debug('✅ Public URL generated:', fileUrl);
             } catch (uploadError) {
                 console.error('❌ File upload error:', uploadError);
                 console.error('   Stack trace:', uploadError.stack);
@@ -280,7 +285,7 @@ export const sendMessage = async (req, res) => {
             }
         }
 
-        console.log('📤 Creating message with data:', {
+        debug('📤 Creating message with data:', {
             text, imageUrl, fileUrl, fileName, messageType,
             resType: imageResourceType || fileResourceType
         });
@@ -302,7 +307,7 @@ export const sendMessage = async (req, res) => {
 
         try {
             await newMessage.save();
-            console.log('✅ Message saved to database');
+            debug('✅ Message saved to database');
         } catch (saveError) {
             console.error('❌ Error saving message to database:', saveError);
             console.error('   Validation errors:', saveError.errors);
@@ -332,18 +337,18 @@ export const sendMessage = async (req, res) => {
                 /* SOCKET IO EVENTS */
                 // DIRECT MESSAGE
                 if (receiverId && receiverId !== "undefined") {
-                    console.log('📡 Emitting newMessage event');
-                    console.log('  - Receiver ID:', receiverId);
-                    console.log('  - Sender ID:', senderId.toString());
+                    debug('📡 Emitting newMessage event');
+                    debug('  - Receiver ID:', receiverId);
+                    debug('  - Sender ID:', senderId.toString());
 
                     // Emit ONLY to receiver's room
                     // Sender already sees the message via optimistic UI update
                     io.to(receiverId).emit("newMessage", newMessage);
-                    console.log('  ✅ Emitted to receiver room:', receiverId);
+                    debug('  ✅ Emitted to receiver room:', receiverId);
                 }
                 // GROUP MESSAGE
                 if (groupId) {
-                    console.log('📡 Emitting to Socket.IO - newGroupMessage');
+                    debug('📡 Emitting to Socket.IO - newGroupMessage');
                     // For groups, emit to everyone (sender will handle duplicate check)
                     io.emit("newGroupMessage", newMessage);
                 }
@@ -382,7 +387,7 @@ export const sendMessage = async (req, res) => {
                                 tokens,
                                 ...notificationPayload
                             });
-                            console.log('📲 PUSH multicast result:', {
+                            debug('📲 PUSH multicast result:', {
                                 receiverId: receiverId.toString(),
                                 successCount: pushRes.successCount,
                                 failureCount: pushRes.failureCount
@@ -399,10 +404,10 @@ export const sendMessage = async (req, res) => {
 
                                 if (invalidTokens.length > 0) {
                                     await User.findByIdAndUpdate(receiverId, { $pull: { fcmTokens: { $in: invalidTokens } } });
-                                    console.log('🧹 Removed invalid FCM tokens:', { receiverId: receiverId.toString(), count: invalidTokens.length });
+                                    debug('🧹 Removed invalid FCM tokens:', { receiverId: receiverId.toString(), count: invalidTokens.length });
                                 }
                             }
-                            console.log(`📲 PUSH sent to ${receiver.fullName}`);
+                            debug(`📲 PUSH sent to ${receiver.fullName}`);
                         }
                     }
                 }
@@ -430,7 +435,7 @@ export const sendMessage = async (req, res) => {
                                 tokens: uniqueTokens,
                                 ...notificationPayload
                             });
-                            console.log(`📲 PUSH sent to ${offlineTokens.length} offline group members`);
+                            debug(`📲 PUSH sent to ${offlineTokens.length} offline group members`);
                         }
                     }
                 }
@@ -440,7 +445,7 @@ export const sendMessage = async (req, res) => {
         })();
 
     } catch (err) {
-        console.log('Error in sendMessage:', err.message);
+        console.error('Error in sendMessage:', err.message);
         // Only verify headers sent if we haven't sent response yet
         if (!res.headersSent) {
             res.status(500).json({ err: 'Internal server error' });
@@ -530,7 +535,7 @@ export const deleteMessages = async (req, res) => {
                                 .remove([filePath]);
 
                             if (error) console.error('Error deleting file from Supabase:', error);
-                            else console.log('✅ File deleted from Supabase:', filePath);
+                            else debug('✅ File deleted from Supabase:', filePath);
                         } else {
                             console.warn('⚠️ Could not extract path from Supabase URL:', msg.fileUrl);
                         }
@@ -543,11 +548,11 @@ export const deleteMessages = async (req, res) => {
                         const resType = msg.cloudinaryResourceType || 'raw';
                         const publicId = extractPublicId(msg.fileUrl, resType);
                         if (publicId) {
-                            console.log('🗑️ Deleting legacy file from Cloudinary:', publicId);
+                            debug('🗑️ Deleting legacy file from Cloudinary:', publicId);
                             await cloudnairy.uploader.destroy(publicId, { resource_type: resType });
                         }
                     } catch (err) {
-                        console.error('Error deleting legacy file from Cloudinary:', err);
+                        console.error('Error deleting file from Cloudinary:', err);
                     }
                 }
             }
@@ -577,7 +582,7 @@ export const deleteMessages = async (req, res) => {
         });
 
         // Emit to all involved users
-        console.log('🗑️ Emitting messagesDeleted event to users:', Array.from(involvedUsers));
+        debug('🗑️ Emitting messagesDeleted event to users:', Array.from(involvedUsers));
         involvedUsers.forEach(userId => {
             io.to(userId).emit("messagesDeleted", {
                 messageIds,
@@ -587,7 +592,7 @@ export const deleteMessages = async (req, res) => {
 
         res.status(200).json({ message: "Messages deleted successfully" });
     } catch (error) {
-        console.log("Error in deleteMessages:", error.message);
+        console.error("Error in deleteMessages:", error.message);
         res.status(500).json({ message: "Internal Server Error" });
     }
 };
@@ -641,7 +646,9 @@ export const clearChat = async (req, res) => {
                                 .remove([filePath]);
 
                             if (error) console.error('Error deleting file from Supabase:', error);
-                            else console.log('✅ File deleted from Supabase:', filePath);
+                            else debug('✅ File deleted from Supabase:', filePath);
+                        } else {
+                            console.warn('⚠️ Could not extract path from Supabase URL:', msg.fileUrl);
                         }
                     } catch (err) {
                         console.error('Error parsing Supabase URL for deletion:', err);
@@ -684,16 +691,16 @@ export const clearChat = async (req, res) => {
 
         // Emit system message to receiver using room (not socket ID)
         io.to(userToChatId).emit("newMessage", systemMessage);
-        console.log("✅ System message emitted to receiver:", userToChatId);
+        debug("✅ System message emitted to receiver:", userToChatId);
 
         // Also emit a clearChat event to both users for UI update
         io.to(userToChatId).emit("chatCleared", { clearedBy: myId.toString(), userId: userToChatId });
         io.to(myId.toString()).emit("chatCleared", { clearedBy: myId.toString(), userId: userToChatId });
-        console.log("✅ clearChat event emitted to both users");
+        debug("✅ clearChat event emitted to both users");
 
         res.status(200).json({ message: "Chat cleared successfully" });
     } catch (error) {
-        console.log("Error in clearChat:", error.message);
+        console.error("Error in clearChat:", error.message);
         res.status(500).json({ message: "Internal Server Error" });
     }
 };
@@ -742,7 +749,7 @@ export const clearGroupChat = async (req, res) => {
                                 .remove([filePath]);
 
                             if (error) console.error('Error deleting file from Supabase:', error);
-                            else console.log('✅ File deleted from Supabase:', filePath);
+                            else debug('✅ File deleted from Supabase:', filePath);
                         }
                     } catch (err) {
                         console.error('Error parsing Supabase URL for deletion:', err);
@@ -783,7 +790,7 @@ export const clearGroupChat = async (req, res) => {
 
         res.status(200).json({ message: "Group chat cleared successfully" });
     } catch (error) {
-        console.log("Error in clearGroupChat:", error.message);
+        console.error("Error in clearGroupChat:", error.message);
         res.status(500).json({ message: "Internal Server Error" });
     }
 };
@@ -848,7 +855,7 @@ export const editMessage = async (req, res) => {
         }
         involvedUsers.add(userId.toString());
 
-        console.log('✏️ Emitting messageEdited event to users:', Array.from(involvedUsers));
+        debug('✏️ Emitting messageEdited event to users:', Array.from(involvedUsers));
         involvedUsers.forEach(uid => {
             io.to(uid).emit("messageEdited", message);
         });
@@ -860,7 +867,7 @@ export const editMessage = async (req, res) => {
 
         res.status(200).json(message);
     } catch (error) {
-        console.log("Error in editMessage:", error.message);
+        console.error("Error in editMessage:", error.message);
         res.status(500).json({ message: "Internal Server Error" });
     }
 };

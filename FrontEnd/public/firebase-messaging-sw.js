@@ -1,6 +1,11 @@
 importScripts('https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging-compat.js');
 
+const isDev = self.location.hostname === 'localhost' || self.location.hostname === '127.0.0.1';
+const debug = (...args) => {
+    if (isDev) console.log(...args);
+};
+
 // Initialize Firebase
 firebase.initializeApp({
     apiKey: "AIzaSyCGjZ8qe8PAUA2PrPW1x1zN94SihuujZIU",
@@ -15,7 +20,7 @@ const messaging = firebase.messaging();
 
 // Listen for background messages
 messaging.onBackgroundMessage((payload) => {
-    console.log('[firebase-messaging-sw.js] Received background message ', payload);
+    debug('[firebase-messaging-sw.js] Received background message ', payload);
 
     const data = payload?.data || {};
     const notification = payload?.notification || {};
@@ -39,7 +44,7 @@ messaging.onBackgroundMessage((payload) => {
 
 // Optional: handle clicks on notification
 self.addEventListener('notificationclick', (event) => {
-    console.log('Notification clicked:', event);
+    debug('Notification clicked:', event);
     event.notification.close();
     
     const data = event.notification.data;
