@@ -6,9 +6,10 @@ import cors from "cors"
 import path from 'path'
 
 import authRouter from './Routes/auth.route.js';
-import messsageRoute from './Routes/message.route.js'
-import sellerRoute from './Routes/seller.route.js'
-import groupRoute from './Routes/group.route.js'
+import messsageRoute from './Routes/message.route.js';
+import sellerRoute from './Routes/seller.route.js';
+import groupRoute from './Routes/group.route.js';
+import debugRouter from './Routes/debug.route.js';
 import { app, server } from './lib/socket.js';
 dotenv.config();
 
@@ -32,8 +33,9 @@ app.use(cors({
 
 app.use("/api/auth", authRouter);
 app.use("/api/message", messsageRoute);
-app.use("/api/seller", sellerRoute)
-app.use("/api/group", groupRoute)
+app.use("/api/seller", sellerRoute);
+app.use("/api/group", groupRoute);
+app.use("/api/debug", debugRouter);
 
 if (process.env.NODE_ENV === "production") {
   app.use(express.static(path.join(__dirname, '../FrontEnd/dist/')))
