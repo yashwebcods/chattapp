@@ -618,21 +618,57 @@ export const useMessageStore = create(persist((set, get) => ({
         // Listen for group updates (member add/remove)
         socket.on("groupUpdate", (updatedGroup) => {
             debug("groupUpdate event received:", updatedGroup);
-            const { groups, selectedGroup } = get();
+            const { groups, selectedGroup, unreadCounts } = get();
+            const authUser = useAuthStore.getState().authUser;
+            const authUserId = authUser?._id?.toString();
 
-            // Update groups list
-            const updatedGroups = groups.map(g =>
-                g._id === updatedGroup._id ? updatedGroup : g
-            );
+            const memberIds = (updatedGroup?.members || [])
+                .map(m => (typeof m === 'string' ? m : m?._id))
+                .filter(Boolean)
+                .map(id => id.toString());
+            const isMember = authUserId ? memberIds.includes(authUserId) : false;
 
-            // If the updated group is currently selected, update it too
-            const updatedSelectedGroup = selectedGroup?._id === updatedGroup._id
-                ? updatedGroup
+            const existsInList = groups.some(g => g._id === updatedGroup._id);
+
+            // Add group if I was newly added
+            let nextGroups = groups;
+            if (!existsInList && isMember) {
+                const totalUnread = unreadCounts?.[updatedGroup._id] || 0;
+                const groupLabel = updatedGroup?.sellerId?.companyName && updatedGroup?.sellerIndex !== undefined
+                    ? `${Math.abs(updatedGroup.sellerIndex + 1)} - ${updatedGroup.sellerId.companyName}`
+                    : (updatedGroup?.name || 'a group');
+
+                toast.success(
+                    totalUnread > 0
+                        ? `You were added to ${groupLabel} (${totalUnread} new)`
+                        : `You were added to ${groupLabel}`,
+                    { duration: 2000 }
+                );
+
+                // Ensure we fetch the full group object shape (sellerId/companyName, sellerIndex, unreadCount)
+                // because updatedGroup emitted by backend may not include populated sellerId or computed fields.
+                get().getGroups();
+                return;
+            }
+
+            // Remove group if I was removed
+            if (existsInList && !isMember) {
+                nextGroups = groups.filter(g => g._id !== updatedGroup._id);
+            }
+
+            // Update group details if it exists
+            if (existsInList && isMember) {
+                nextGroups = nextGroups.map(g => (g._id === updatedGroup._id ? { ...g, ...updatedGroup } : g));
+            }
+
+            // If the updated group is currently selected, update or clear it
+            const nextSelectedGroup = selectedGroup?._id === updatedGroup._id
+                ? (isMember ? { ...selectedGroup, ...updatedGroup } : null)
                 : selectedGroup;
 
             set({
-                groups: updatedGroups,
-                selectedGroup: updatedSelectedGroup
+                groups: nextGroups,
+                selectedGroup: nextSelectedGroup
             });
         });
     },

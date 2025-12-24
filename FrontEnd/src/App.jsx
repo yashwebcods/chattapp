@@ -89,7 +89,7 @@ function App() {
           <Route path="/login" element={!authUser ? <LoginPage /> : <Navigate to="/" />} />
           <Route path="/setting" element={<SettingPage />} />
           <Route path="/profile" element={authUser ? <ProfilePage /> : <Navigate to="/login" />} />
-          <Route path="/groups" element={authUser && (authUser.role === 'manager' || authUser.role === 'owner') ? <GroupsListPage /> : <Navigate to="/" />} />
+          <Route path="/groups" element={authUser ? <GroupsListPage /> : <Navigate to="/login" />} />
           <Route path="/group/:groupId" element={authUser ? <GroupChatPage /> : <Navigate to="/login" />} />
           <Route path="/add-seller" element={authUser ? <AddSellerPage /> : <Navigate to="/login" />} />
         </Routes>
