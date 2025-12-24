@@ -373,8 +373,13 @@ export const useMessageStore = create(persist((set, get) => ({
                 newMessage.senderId?._id === selectedUser._id
             );
 
-            // If viewing this chat, add message to current conversation AND mark as seen
-            if (isFromSelectedUser && !message.some(msg => msg._id === newMessage._id)) {
+            const pathname = window?.location?.pathname || '';
+            const isHomeRoute = pathname === '/';
+            const isTabVisible = typeof document !== 'undefined' ? document.visibilityState === 'visible' : true;
+            const isActivelyViewingThisDm = isHomeRoute && isTabVisible && isFromSelectedUser;
+
+            // If actively viewing this chat, add message to current conversation AND mark as seen
+            if (isActivelyViewingThisDm && !message.some(msg => msg._id === newMessage._id)) {
                 set({ message: [...message, newMessage] });
                 get().markAsSeen(selectedUser._id);
             } else {
@@ -554,6 +559,12 @@ export const useMessageStore = create(persist((set, get) => ({
                 selectedGroup._id === newMessage.groupId?.toString()
             );
 
+            const pathname = window?.location?.pathname || '';
+            const isHomeRoute = pathname === '/';
+            const isGroupRoute = pathname.startsWith('/group/');
+            const isTabVisible = typeof document !== 'undefined' ? document.visibilityState === 'visible' : true;
+            const isActivelyViewingThisGroup = (isHomeRoute || isGroupRoute) && isTabVisible && isCurrentGroup;
+
             debug("🔍 Group message analysis:", {
                 isCurrentGroup,
                 selectedGroupId: selectedGroup?._id,
@@ -562,14 +573,14 @@ export const useMessageStore = create(persist((set, get) => ({
                 authUserId: authUser._id
             });
 
-            if (isCurrentGroup) {
+            if (isActivelyViewingThisGroup) {
                 debug("➕ Adding message to current group chat");
                 set({ message: [...message, newMessage] });
                 get().markAsSeen(selectedGroup._id); // Mark group messages as seen
             }
 
             // If we sent the message, don't show toast or increment unread count
-            if (!isMyMessage && !isCurrentGroup) {
+            if (!isMyMessage && !isActivelyViewingThisGroup) {
                 // Get group name - format it like in GroupsListPage
                 let groupName = 'a group';
                 if (newMessage.groupId?.sellerId?.companyName && newMessage.groupId?.sellerIndex !== undefined) {
