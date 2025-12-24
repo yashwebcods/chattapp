@@ -8,8 +8,16 @@ import GroupPage from '../pages/GroupPage'
 import { ArrowLeft } from 'lucide-react'
 
 function HomePage() {
-  const { selectedUser, selectedGroup, isOn, setSelectedUser, setSelectedGroup } = useMessageStore()
+  const { selectedUser, selectedGroup, isOn, setSelectedUser, setSelectedGroup, setGroup } = useMessageStore()
+  const { authUser } = useAuthStore()
+  const canManageGroups = authUser?.role === 'owner' || authUser?.role === 'manager'
   const [showSidebar, setShowSidebar] = useState(true)
+
+  React.useEffect(() => {
+    if (isOn && !canManageGroups) {
+      setGroup(false)
+    }
+  }, [isOn, canManageGroups, setGroup])
 
   const handleBackToSidebar = () => {
     setSelectedUser(null)
@@ -34,7 +42,7 @@ function HomePage() {
               ) : (
                 <div className='w-full flex flex-col'>
                   <div className='flex-1 overflow-hidden h-full'>
-                    {isOn ? (
+                    {isOn && canManageGroups ? (
                       <GroupPage />
                     ) : selectedUser ? (
                       <Chat />
@@ -53,7 +61,7 @@ function HomePage() {
                 <div className='flex-1 overflow-hidden'>
                   {!selectedUser && !selectedGroup && !isOn ? (
                     <NoChatSelected />
-                  ) : isOn ? (
+                  ) : isOn && canManageGroups ? (
                     <GroupPage />
                   ) : selectedUser ? (
                     <Chat />

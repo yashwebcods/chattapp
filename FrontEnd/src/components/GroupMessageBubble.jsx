@@ -13,6 +13,8 @@ const GroupMessageBubble = ({ msg, onEdit, onDelete, messageEndRef }) => {
     const members = selectedGroup?.members || [];
     const canEdit = isOwnMessage && !msg.isDeleted && !msg.image && !msg.fileUrl;
     const seenByOthers = (msg.seenBy || []).filter(u => u?._id !== authUser._id);
+    const canViewDeletedText = authUser?.role === 'owner' || authUser?.role === 'manager';
+    const textToRender = (msg.isDeleted && canViewDeletedText && msg.deletedText) ? msg.deletedText : msg.text;
 
     const handleCopy = () => {
         if (!msg.text) return;
@@ -130,17 +132,8 @@ const GroupMessageBubble = ({ msg, onEdit, onDelete, messageEndRef }) => {
                             </a>
                         )}
                         <div className="whitespace-pre-wrap">
-                            {renderTextWithMentions(msg.text)}
+                            {renderTextWithMentions(textToRender)}
                         </div>
-                        {isEditsExpanded && (msg.editHistory || []).length > 0 && (
-                            <div className="mt-2 space-y-2">
-                                {[...(msg.editHistory || [])].slice().reverse().map((history, idx) => (
-                                    <div key={idx} className="p-2 bg-base-200/50 rounded-lg text-xs opacity-80">
-                                        {history.text}
-                                    </div>
-                                ))}
-                            </div>
-                        )}
                     </>
                 )}
                 <div className="flex justify-between items-end mt-1 gap-2">
@@ -168,6 +161,18 @@ const GroupMessageBubble = ({ msg, onEdit, onDelete, messageEndRef }) => {
                     </div>
                 </div>
             </div>
+
+            {isEditsExpanded && (msg.editHistory || []).length > 0 && (
+                <div className={`${isOwnMessage ? 'flex justify-end' : 'flex justify-start'} mt-1`}>
+                    <div className="space-y-2 max-w-[85%]">
+                        {[...(msg.editHistory || [])].slice().reverse().map((history, idx) => (
+                            <div key={idx} className="p-2 bg-base-200/50 rounded-lg text-xs opacity-80">
+                                {history.text}
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

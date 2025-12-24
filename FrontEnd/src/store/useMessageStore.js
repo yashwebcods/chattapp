@@ -488,7 +488,7 @@ export const useMessageStore = create(persist((set, get) => ({
 
         // Real-time delete (soft-delete) update
         socket.off("messagesDeleted");
-        socket.on("messagesDeleted", ({ messageIds, deletedBy }) => {
+        socket.on("messagesDeleted", ({ messageIds, deletedBy, deletedTexts }) => {
             debug("🗑️ messagesDeleted event received:", { deletedBy, count: messageIds?.length });
             if (!Array.isArray(messageIds) || messageIds.length === 0) return;
 
@@ -499,6 +499,7 @@ export const useMessageStore = create(persist((set, get) => ({
                         return {
                             ...msg,
                             isDeleted: true,
+                            deletedText: deletedTexts?.[msg._id] ?? msg.deletedText ?? null,
                             text: 'This message was deleted',
                             image: null,
                             fileUrl: null
@@ -760,6 +761,7 @@ export const useMessageStore = create(persist((set, get) => ({
                     return {
                         ...msg,
                         isDeleted: true,
+                        deletedText: msg.text ?? msg.deletedText ?? null,
                         text: 'This message was deleted',
                         image: null,
                         fileUrl: null

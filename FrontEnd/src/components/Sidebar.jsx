@@ -15,6 +15,8 @@ function Sidebar({ onSelectUser }) {
     const { onlineUsers, authUser } = useAuthStore()
     const navigate = useNavigate()
 
+    const canManageGroups = authUser?.role === 'owner' || authUser?.role === 'manager'
+
     const [isGroup, setIsGroup] = useState(false)
     const [searchTerm, setSearchTerm] = useState('')
     const [showOnlineOnly, setShowOnlineOnly] = useState(false)
@@ -51,46 +53,48 @@ function Sidebar({ onSelectUser }) {
                     </div>
                     {/* change popover-1 and --anchor-1 names. Use unique names for each dropdown */}
                     {/* For TSX uncomment the commented types below */}
-                    <div className="dropdown dropdown-end">
-                        <button tabIndex={0} role="button" className="btn relative">
-                            <Users />
-                            {/* Show warning badge if any group has unread messages */}
-                            {Array.isArray(groups) && groups.reduce((acc, g) => acc + ((unreadCounts && g?._id) ? (unreadCounts[g._id] || 0) : 0), 0) > 0 && (
-                                <span className="absolute -top-1 -right-1 flex h-3 w-3">
-                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                                    <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
-                                </span>
-                            )}
-                        </button>
-                        <ul tabIndex={0} className="dropdown-content menu bg-base-100 rounded-box z-[1] w-52 p-2 shadow">
-                            <li>
-                                <button
-                                    onClick={() => {
-                                        setIsGroup(!isGroup)
-                                        setGroup(!isGroup)
-                                    }}
-                                    className="btn btn-ghost w-full justify-start"
-                                >
-                                    Add Group
-                                </button>
-                            </li>
-                            <li>
-                                <button
-                                    onClick={() => {
-                                        navigate('/groups')
-                                    }}
-                                    className="btn btn-ghost w-full justify-start justify-between"
-                                >
-                                    View Groups
-                                    {Array.isArray(groups) && groups.reduce((acc, g) => acc + ((unreadCounts && g?._id) ? (unreadCounts[g._id] || 0) : 0), 0) > 0 && (
-                                        <span className="badge badge-sm badge-error text-white">
-                                            {groups.reduce((acc, g) => acc + ((unreadCounts && g?._id) ? (unreadCounts[g._id] || 0) : 0), 0)}
-                                        </span>
-                                    )}
-                                </button>
-                            </li>
-                        </ul>
-                    </div>
+                    {canManageGroups && (
+                        <div className="dropdown dropdown-end">
+                            <button tabIndex={0} role="button" className="btn relative">
+                                <Users />
+                                {/* Show warning badge if any group has unread messages */}
+                                {Array.isArray(groups) && groups.reduce((acc, g) => acc + ((unreadCounts && g?._id) ? (unreadCounts[g._id] || 0) : 0), 0) > 0 && (
+                                    <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                                        <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+                                    </span>
+                                )}
+                            </button>
+                            <ul tabIndex={0} className="dropdown-content menu bg-base-100 rounded-box z-[1] w-52 p-2 shadow">
+                                <li>
+                                    <button
+                                        onClick={() => {
+                                            setIsGroup(!isGroup)
+                                            setGroup(!isGroup)
+                                        }}
+                                        className="btn btn-ghost w-full justify-start"
+                                    >
+                                        Add Group
+                                    </button>
+                                </li>
+                                <li>
+                                    <button
+                                        onClick={() => {
+                                            navigate('/groups')
+                                        }}
+                                        className="btn btn-ghost w-full justify-start justify-between"
+                                    >
+                                        View Groups
+                                        {Array.isArray(groups) && groups.reduce((acc, g) => acc + ((unreadCounts && g?._id) ? (unreadCounts[g._id] || 0) : 0), 0) > 0 && (
+                                            <span className="badge badge-sm badge-error text-white">
+                                                {groups.reduce((acc, g) => acc + ((unreadCounts && g?._id) ? (unreadCounts[g._id] || 0) : 0), 0)}
+                                            </span>
+                                        )}
+                                    </button>
+                                </li>
+                            </ul>
+                        </div>
+                    )}
                 </div>
                 {/* Online Filter Toggle */}
                 <div className="mt-3 flex items-center gap-2">

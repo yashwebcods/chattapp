@@ -35,6 +35,7 @@ function Chat() {
 
   const { authUser } = useAuthStore();
   const [expandedEditsMessageId, setExpandedEditsMessageId] = React.useState(null);
+  const canViewDeletedText = authUser?.role === 'owner' || authUser?.role === 'manager';
 
   const getDayKey = (value) => {
     if (!value) return '';
@@ -317,10 +318,18 @@ function Chat() {
                             >
                               <div className='cursor-pointer'>
                                 {v.isDeleted ? (
-                                  <p className='italic text-base-content/50'>
-                                    This message was deleted by{' '}
-                                    {v.deletedBy?.fullName || 'user'}
-                                  </p>
+                                  <>
+                                    {canViewDeletedText && v.deletedText ? (
+                                      <p className='italic text-base-content/50 whitespace-pre-wrap'>
+                                        {v.deletedText}
+                                      </p>
+                                    ) : (
+                                      <p className='italic text-base-content/50'>
+                                        This message was deleted by{' '}
+                                        {v.deletedBy?.fullName || 'user'}
+                                      </p>
+                                    )}
+                                  </>
                                 ) : v.isUploading ? (
                                   // Upload Progress Indicator
                                   <div className="flex items-center gap-3 py-2">
@@ -362,15 +371,6 @@ function Chat() {
                                       </div>
                                     )}
                                     {v.text && <p className="mb-1">{v.text}</p>}
-                                    {expandedEditsMessageId === v._id && (v.editHistory || []).length > 0 && (
-                                      <div className="mt-2 space-y-2">
-                                        {[...(v.editHistory || [])].slice().reverse().map((history, hIdx) => (
-                                          <div key={hIdx} className="p-2 bg-base-200/50 rounded-lg text-xs opacity-80">
-                                            {history.text}
-                                          </div>
-                                        ))}
-                                      </div>
-                                    )}
                                     <div className="flex items-center gap-1 self-end mt-auto">
                                       {v.isEdited && (
                                         <button
@@ -399,6 +399,19 @@ function Chat() {
                                 )}
                               </div>
                             </div>
+
+                            {expandedEditsMessageId === v._id && (v.editHistory || []).length > 0 && (
+                              <div className={`${isOwnMessage ? 'flex justify-end' : 'flex justify-start'} mt-1`}
+                              >
+                                <div className="space-y-2 max-w-[85%]">
+                                  {[...(v.editHistory || [])].slice().reverse().map((history, hIdx) => (
+                                    <div key={hIdx} className="p-2 bg-base-200/50 rounded-lg text-xs opacity-80">
+                                      {history.text}
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
                           </div>
                         </div>
                       </React.Fragment>

@@ -97,7 +97,17 @@ export const getGroupMessages = async (req, res) => {
             .populate("senderId", "fullName image email role")
             .populate("seenBy", "fullName image");
 
-        res.status(200).json(messages.reverse());
+        const canViewDeletedText = req.user.role === 'owner' || req.user.role === 'manager';
+        const response = messages
+            .slice()
+            .reverse()
+            .map((m) => {
+                const obj = m.toObject();
+                if (!canViewDeletedText) obj.deletedText = null;
+                return obj;
+            });
+
+        res.status(200).json(response);
     } catch (error) {
         console.error("Error in getGroupMessages controller: ", error.message);
         res.status(500).json({ message: "Internal Server Error" });

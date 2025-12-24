@@ -59,6 +59,10 @@ const messageSchema = mongoose.Schema({
         ref: 'User',
         default: null
     },
+    deletedText: {
+        type: String,
+        default: null
+    },
     // Edit tracking
     isEdited: {
         type: Boolean,

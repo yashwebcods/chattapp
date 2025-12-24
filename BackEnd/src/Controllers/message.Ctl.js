@@ -145,8 +145,17 @@ export const getMessage = async (req, res) => {
             .populate('deletedBy', 'fullName')
             .populate('seenBy', 'fullName image');
 
-        // Reverse to maintain chronological order for the frontend list
-        res.status(200).json(message.reverse());
+        const canViewDeletedText = req.user.role === 'owner' || req.user.role === 'manager';
+        const response = message
+            .slice()
+            .reverse()
+            .map((m) => {
+                const obj = m.toObject();
+                if (!canViewDeletedText) obj.deletedText = null;
+                return obj;
+            });
+
+        res.status(200).json(response);
     } catch (err) {
         console.error('Error in getMessage:', err.message);
         res.status(500).json({ error: 'Internal server error' });
@@ -578,18 +587,26 @@ export const deleteMessages = async (req, res) => {
 
         // Soft delete messages where _id is in messageIds array
         // We also clear the file/image fields since the actual file is gone
-        await Message.updateMany(
-            { _id: { $in: messageIds } },
-            {
-                $set: {
-                    isDeleted: true,
-                    deletedBy: req.user._id,
-                    image: null,
-                    fileUrl: null,
-                    text: 'This message was deleted'
+
+        const bulkOps = messages.map((msg) => ({
+            updateOne: {
+                filter: { _id: msg._id },
+                update: {
+                    $set: {
+                        isDeleted: true,
+                        deletedBy: req.user._id,
+                        deletedText: msg.text ?? null,
+                        image: null,
+                        fileUrl: null,
+                        text: 'This message was deleted'
+                    }
                 }
             }
-        );
+        }));
+
+        if (bulkOps.length > 0) {
+            await Message.bulkWrite(bulkOps);
+        }
 
         // Emit socket event to update UI in real-time
         // Get all unique user IDs involved in these messages
@@ -599,12 +616,30 @@ export const deleteMessages = async (req, res) => {
             if (msg.senderId) involvedUsers.add(msg.senderId.toString());
         });
 
+        const groupIds = [...new Set(messages.filter(m => m.groupId).map(m => m.groupId.toString()))];
+        if (groupIds.length > 0) {
+            const groups = await Group.find({ _id: { $in: groupIds } }).select('members');
+            groups.forEach(g => (g.members || []).forEach(mId => involvedUsers.add(mId.toString())));
+        }
+
+        const deletedTexts = {};
+        messages.forEach((m) => {
+            deletedTexts[m._id.toString()] = m.text ?? null;
+        });
+
+        const involvedUserDocs = await User.find({ _id: { $in: Array.from(involvedUsers) } })
+            .select('role');
+        const roleByUserId = new Map(involvedUserDocs.map(u => [u._id.toString(), u.role]));
+
         // Emit to all involved users
         debug('🗑️ Emitting messagesDeleted event to users:', Array.from(involvedUsers));
         involvedUsers.forEach(userId => {
+            const role = roleByUserId.get(userId);
+            const canViewDeletedText = role === 'owner' || role === 'manager';
             io.to(userId).emit("messagesDeleted", {
                 messageIds,
-                deletedBy: req.user._id
+                deletedBy: req.user._id,
+                ...(canViewDeletedText ? { deletedTexts } : {})
             });
         });
 
