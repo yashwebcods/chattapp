@@ -41,6 +41,21 @@ function HomePage() {
                 <Sidebar onSelectUser={handleSelectUser} />
               ) : (
                 <div className='w-full flex flex-col'>
+                  {/* Mobile Header with Back Button */}
+                  <div className='flex items-center gap-3 p-3 bg-base-200 border-b border-base-300 lg:hidden'>
+                    <button
+                      onClick={handleBackToSidebar}
+                      className='btn btn-ghost btn-circle btn-sm'
+                      title='Back to conversations'
+                    >
+                      <ArrowLeft className='size-5' />
+                    </button>
+                    <div className='flex-1'>
+                      <h3 className='font-semibold text-sm truncate'>
+                        {selectedUser ? selectedUser.fullName : selectedGroup?.name || 'Chat'}
+                      </h3>
+                    </div>
+                  </div>
                   <div className='flex-1 overflow-hidden h-full'>
                     {isOn && canManageGroups ? (
                       <GroupPage />
