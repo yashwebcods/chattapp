@@ -320,7 +320,7 @@ function Chat() {
                                 {v.isDeleted ? (
                                   <>
                                     {canViewDeletedText && v.deletedText ? (
-                                      <p className='italic text-base-content/50 whitespace-pre-wrap'>
+                                      <p className={`italic ${canViewDeletedText ? 'text-error' : 'text-base-content/50'} whitespace-pre-wrap`}>
                                         {v.deletedText}
                                       </p>
                                     ) : (

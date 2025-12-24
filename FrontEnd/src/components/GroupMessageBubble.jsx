@@ -14,7 +14,12 @@ const GroupMessageBubble = ({ msg, onEdit, onDelete, messageEndRef }) => {
     const canEdit = isOwnMessage && !msg.isDeleted && !msg.image && !msg.fileUrl;
     const seenByOthers = (msg.seenBy || []).filter(u => u?._id !== authUser._id);
     const canViewDeletedText = authUser?.role === 'owner' || authUser?.role === 'manager';
-    const textToRender = (msg.isDeleted && canViewDeletedText && msg.deletedText) ? msg.deletedText : msg.text;
+    const showDeletedOriginal = msg.isDeleted && canViewDeletedText && msg.deletedText;
+    const textToRender = showDeletedOriginal
+        ? msg.deletedText
+        : (msg.isDeleted
+            ? `This message was deleted by ${msg.deletedBy?.fullName || 'user'}`
+            : msg.text);
 
     const handleCopy = () => {
         if (!msg.text) return;
@@ -131,7 +136,7 @@ const GroupMessageBubble = ({ msg, onEdit, onDelete, messageEndRef }) => {
                                 </div>
                             </a>
                         )}
-                        <div className="whitespace-pre-wrap">
+                        <div className={`whitespace-pre-wrap ${showDeletedOriginal ? 'text-error italic' : ''}`}>
                             {renderTextWithMentions(textToRender)}
                         </div>
                     </>
