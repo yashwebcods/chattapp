@@ -36,11 +36,27 @@ app.use("/api/seller", sellerRoute);
 app.use("/api/group", groupRoute);
 
 if (process.env.NODE_ENV === "production") {
-  app.use(express.static(path.join(__dirname, '../FrontEnd/dist/')))
+  const distPath = path.join(__dirname, '../FrontEnd/dist');
 
+  // Serve built assets. If an asset is missing, return 404 (do NOT fall back to index.html)
+  // Otherwise the browser receives HTML for a JS module and throws a strict MIME error.
+  app.use(
+    '/assets',
+    express.static(path.join(distPath, 'assets'), {
+      fallthrough: false,
+      immutable: true,
+      maxAge: '1y'
+    })
+  );
+
+  // Serve other static files (favicon, etc)
+  app.use(express.static(distPath, { index: false }));
+
+  // SPA fallback for non-API, non-asset routes
   app.get("*", (req, res) => {
-    res.sendFile(path.join(__dirname, "../FrontEnd", "dist", "index.html"))
-  })
+    res.setHeader('Cache-Control', 'no-store');
+    res.sendFile(path.join(distPath, 'index.html'));
+  });
 }
 
 server.listen(port, (err) => {
